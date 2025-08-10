@@ -2,8 +2,10 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from .core.database import get_async_session
+from .routers import products
 
 app = FastAPI(title="Shop API")
+app.include_router(products.router)
 
 
 @app.get("/")
