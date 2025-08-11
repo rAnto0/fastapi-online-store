@@ -11,6 +11,7 @@ class ProductBase(BaseModel):
         str | None, Field(max_length=500, description="Описание товара")
     ] = None
     price: Annotated[float, Field(..., gt=0, description="Цена товара")]
+    category_id: Annotated[int, Field(..., ge=1, description="ID категории")]
 
     model_config = {"str_strip_whitespace": True}
 
@@ -23,6 +24,8 @@ class ProductRead(ProductBase):
     id: int
     created_at: datetime
 
+    model_config = {"from_attributes": True}
+
 
 class ProductUpdate(BaseModel):
     title: Annotated[
@@ -32,5 +35,6 @@ class ProductUpdate(BaseModel):
         str | None, Field(max_length=500, description="Описание товара")
     ] = None
     price: Annotated[float | None, Field(gt=0, description="Цена товара")] = None
+    category_id: Annotated[int | None, Field(ge=1, description="ID категории")] = None
 
     model_config = {"str_strip_whitespace": True}

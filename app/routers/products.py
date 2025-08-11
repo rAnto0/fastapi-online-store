@@ -6,19 +6,22 @@ from sqlalchemy import select
 
 from app.core.database import get_async_session
 from app.models.product import Product
+from app.models.category import Category
 from app.schemas.product import ProductRead, ProductCreate, ProductUpdate
 
 
 router = APIRouter(prefix="/products", tags=["Товары"])
 
 
-@router.get("/", response_model=list[ProductRead], summary="Получить список всех товаров")
+@router.get(
+    "/", response_model=list[ProductRead], summary="Получить список всех товаров"
+)
 async def get_products(
     session: AsyncSession = Depends(get_async_session),
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(gt=0)] = 100,
 ):
-    query = select(Product).offset(offset).limit(limit)
+    query = select(Product).order_by(Product.id).offset(offset).limit(limit)
     result = await session.execute(query)
 
     return result.scalars().all()
@@ -55,6 +58,10 @@ async def create_product(
     data: ProductCreate, session: AsyncSession = Depends(get_async_session)
 ):
     try:
+        category = await session.get(Category, data.category_id)
+        if category is None:
+            raise HTTPException(status_code=400, detail="Категория не найдена")
+
         product = Product(**data.model_dump(exclude_unset=True))
 
         session.add(product)
@@ -62,6 +69,9 @@ async def create_product(
         await session.refresh(product)
 
         return product
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         await session.rollback()
@@ -96,6 +106,11 @@ async def update_product(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден"
             )
+
+        if "category_id" in update_data:
+            category = await session.get(Category, update_data["category_id"])
+            if not category:
+                raise HTTPException(status_code=400, detail="Категория не найдена")
 
         for key, value in update_data.items():
             setattr(product, key, value)
