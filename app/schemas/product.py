@@ -20,9 +20,17 @@ class ProductCreate(ProductBase):
     pass
 
 
+class CategoryInProduct(BaseModel):
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class ProductRead(ProductBase):
     id: int
     created_at: datetime
+    category: CategoryInProduct
 
     model_config = {"from_attributes": True}
 

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_async_session
 from app.models.product import Product
@@ -21,7 +22,13 @@ async def get_products(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(gt=0)] = 100,
 ):
-    query = select(Product).order_by(Product.id).offset(offset).limit(limit)
+    query = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .order_by(Product.id)
+        .offset(offset)
+        .limit(limit)
+    )
     result = await session.execute(query)
 
     return result.scalars().all()
@@ -39,7 +46,13 @@ async def get_product(
     product_id: Annotated[int, Path(title="ID товара", ge=1)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    product = await session.get(Product, product_id)
+    query = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
+    )
+    result = await session.execute(query)
+    product = result.scalars().first()
     if product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Товар не найден"
@@ -68,7 +81,14 @@ async def create_product(
         await session.commit()
         await session.refresh(product)
 
-        return product
+        query = (
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(Product.id == product.id)
+        )
+        product = await session.execute(query)
+
+        return product.scalars().first()
 
     except HTTPException:
         raise
@@ -101,7 +121,13 @@ async def update_product(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Пустое тело запроса",
             )
-        product = await session.get(Product, product_id)
+        query = (
+            select(Product)
+            .options(selectinload(Product.category))
+            .where(Product.id == product_id)
+        )
+        result = await session.execute(query)
+        product = result.scalars().first()
         if product is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден"
@@ -134,6 +160,7 @@ async def update_product(
 
 @router.delete(
     "/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
     summary="Удалить товар по ID",
 )
 async def delete_product(
@@ -149,8 +176,6 @@ async def delete_product(
 
         await session.delete(product)
         await session.commit()
-
-        return {"msg": "Товар успешно удалён"}
 
     except HTTPException:
         raise
