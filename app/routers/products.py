@@ -1,4 +1,5 @@
 from typing import Annotated
+from enum import Enum
 
 from fastapi import APIRouter, Depends, Query, status, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,21 +15,51 @@ from app.schemas.product import ProductRead, ProductCreate, ProductUpdate
 router = APIRouter(prefix="/products", tags=["Товары"])
 
 
+class PriceSort(str, Enum):
+    asc = "asc"
+    desc = "desc"
+
+
 @router.get(
     "/", response_model=list[ProductRead], summary="Получить список всех товаров"
 )
 async def get_products(
     session: AsyncSession = Depends(get_async_session),
+    category_id: Annotated[int | None, Query(gt=0)] = None,
+    title: Annotated[str | None, Query(min_length=3, max_length=100)] = None,
+    sort_price: Annotated[
+        PriceSort | None, Query(description="asc - по возрастанию, desc - по убыванию")
+    ] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(gt=0)] = 100,
 ):
-    query = (
-        select(Product)
-        .options(selectinload(Product.category))
-        .order_by(Product.id)
-        .offset(offset)
-        .limit(limit)
-    )
+    # формируем основной запрос
+    query = select(Product).options(selectinload(Product.category))
+
+    # добавляем к запросу сортировку по цене, если клиент запросил. Иначе сортировка по id
+    if sort_price == PriceSort.asc:
+        query = query.order_by(Product.price.asc())
+    elif sort_price == PriceSort.desc:
+        query = query.order_by(Product.price.desc())
+    else:
+        query = query.order_by(Product.id)
+
+    # добавляем к запросу фильтрацию по категории, если клиент передал id категории
+    if category_id:
+        category = await session.get(Category, category_id)
+        if category is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Категория не найдена"
+            )
+        query = query.where(Product.category_id == category_id)
+
+    # добавляем к запросу поиск по названию товара
+    if title:
+        query = query.filter(Product.title.ilike(f"%{title}%"))
+
+    # добавляем к запросу пагинацию
+    query = query.offset(offset).limit(limit)
+
     result = await session.execute(query)
 
     return result.scalars().all()

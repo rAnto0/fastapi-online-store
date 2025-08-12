@@ -9,7 +9,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100), nullable=False, unique=True)
     description = Column(Text)
-    price = Column(Float, nullable=False)
+    price = Column(Float, nullable=False, index=True)
     created_at = Column(DateTime, server_default=func.now())
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
 
