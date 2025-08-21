@@ -1,0 +1,62 @@
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.core.database import get_async_session
+from app.core.security import create_access_token, verify_password, get_password_hash
+from app.services.auth import validate_auth_user
+from app.models.user import User
+from app.schemas.user import UserCreate, UserLogin, UserRead
+
+
+router = APIRouter(prefix="/auth", tags=["Регистрация/Авторизация"])
+
+
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserRead,
+    summary="Регистрация пользователя",
+)
+async def register(
+    data: UserCreate, session: AsyncSession = Depends(get_async_session)
+):
+    # Проверяем, нет ли пользователя с таким email или username
+    result = await session.execute(
+        select(User).where(
+            (User.email == data.email) | (User.username == data.username)
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Пользователь с таким email или username уже существует",
+        )
+
+    hashed_password: bytes = get_password_hash(data.password)
+    new_user = User(
+        username=data.username, email=data.email, hashed_password=hashed_password
+    )
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
+
+    return new_user
+
+
+@router.post(
+    "/login",
+    status_code=status.HTTP_200_OK,
+    summary="Авторизация пользователя",
+)
+async def login(
+    user: UserLogin = Depends(validate_auth_user),
+):
+    jwt_payload = {
+        "sub": str(user.id),
+        "username": user.username,
+        "email": user.email,
+    }
+    access_token = create_access_token(jwt_payload)
+    return {"access_token": access_token, "token_type": "Bearer"}
