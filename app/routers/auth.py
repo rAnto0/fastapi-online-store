@@ -1,15 +1,23 @@
 from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_async_session
-from app.core.security import create_access_token, verify_password, get_password_hash
-from app.services.auth import validate_auth_user
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+)
+from app.services.auth import validate_auth_user, get_current_auth_user_for_refresh
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UserRead
+from app.schemas.user import UserCreate, UserRead, TokenInfo, RefreshRequest
 
 
-router = APIRouter(prefix="/auth", tags=["Регистрация/Авторизация"])
+router = APIRouter(
+    prefix="/auth",
+    tags=["Регистрация/Авторизация"],
+)
 
 
 @router.post(
@@ -49,14 +57,25 @@ async def register(
     "/login",
     status_code=status.HTTP_200_OK,
     summary="Авторизация пользователя",
+    response_model=TokenInfo,
 )
 async def login(
-    user: UserLogin = Depends(validate_auth_user),
+    user: UserRead = Depends(validate_auth_user),
 ):
-    jwt_payload = {
-        "sub": str(user.id),
-        "username": user.username,
-        "email": user.email,
-    }
-    access_token = create_access_token(jwt_payload)
-    return {"access_token": access_token, "token_type": "Bearer"}
+    access_token = create_access_token(user=user)
+    refresh_token = create_refresh_token(user=user)
+
+    return TokenInfo(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post(
+    "/refresh",
+    status_code=status.HTTP_200_OK,
+    summary="Обновление access токена по resresh токену",
+    response_model=TokenInfo,
+)
+async def refresh(user: UserRead = Depends(get_current_auth_user_for_refresh)):
+    access_token = create_access_token(user=user)
+    refresh_token = create_refresh_token(user=user)
+
+    return TokenInfo(access_token=access_token, refresh_token=refresh_token)

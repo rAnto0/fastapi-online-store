@@ -27,8 +27,11 @@ class UserCreate(UserBase):
     ]
 
 
-class UserLogin(UserBase):
-    id: int
-    password: Annotated[
-        str, Field(..., min_length=3, max_length=50, description="Пароль пользователя")
-    ]
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class TokenInfo(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "Bearer"

@@ -30,5 +30,5 @@ async def auth_user_check_self_info(user: UserRead = Depends(get_current_auth_us
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "дата создания": user.created_at
+        "дата создания": user.created_at,
     }
