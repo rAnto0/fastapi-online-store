@@ -10,9 +10,13 @@ from app.core.database import get_async_session
 from app.models.product import Product
 from app.models.category import Category
 from app.schemas.product import ProductRead, ProductCreate, ProductUpdate
+from app.services.auth import get_current_admin_user
 
 
 router = APIRouter(prefix="/products", tags=["Товары"])
+
+
+admin_deps = [Depends(get_current_admin_user)]
 
 
 class PriceSort(str, Enum):
@@ -96,10 +100,12 @@ async def get_product(
     "/",
     status_code=status.HTTP_201_CREATED,
     response_model=ProductRead,
+    dependencies=admin_deps,
     summary="Создать товар",
 )
 async def create_product(
-    data: ProductCreate, session: AsyncSession = Depends(get_async_session)
+    data: ProductCreate,
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         category = await session.get(Category, data.category_id)
@@ -135,6 +141,7 @@ async def create_product(
 @router.patch(
     "/{product_id}",
     response_model=ProductRead,
+    dependencies=admin_deps,
     summary="Обновить товар по ID",
     responses={
         500: {"description": "Внутренняя ошибка сервера"},
@@ -192,6 +199,7 @@ async def update_product(
 @router.delete(
     "/{product_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=admin_deps,
     summary="Удалить товар по ID",
 )
 async def delete_product(

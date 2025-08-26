@@ -7,9 +7,13 @@ from sqlalchemy import select
 from app.core.database import get_async_session
 from app.models.category import Category
 from app.schemas.category import CategoryRead, CategoryCreate, CategoryUpdate
+from app.services.auth import get_current_admin_user
 
 
 router = APIRouter(prefix="/category", tags=["Категории"])
+
+
+admin_deps = [Depends(get_current_admin_user)]
 
 
 @router.get(
@@ -51,6 +55,7 @@ async def get_category(
     "/",
     status_code=status.HTTP_201_CREATED,
     response_model=CategoryRead,
+    dependencies=admin_deps,
     summary="Создать категорию",
 )
 async def create_category(
@@ -76,6 +81,7 @@ async def create_category(
 @router.patch(
     "/{category_id}",
     response_model=CategoryRead,
+    dependencies=admin_deps,
     summary="Обновить категорию по ID",
     responses={
         500: {"description": "Внутренняя ошибка сервера"},
@@ -121,6 +127,7 @@ async def update_category(
 
 @router.delete(
     "/{category_id}",
+    dependencies=admin_deps,
     summary="Удалить категорию по ID",
 )
 async def delete_category(

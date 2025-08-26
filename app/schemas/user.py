@@ -17,6 +17,7 @@ class UserBase(BaseModel):
 class UserRead(UserBase):
     id: int
     created_at: datetime
+    is_admin: bool
 
     model_config = {"from_attributes": True}
 

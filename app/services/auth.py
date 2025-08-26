@@ -71,6 +71,16 @@ async def get_current_auth_user(
     return user
 
 
+async def get_current_admin_user(user: UserRead = Depends(get_current_auth_user)):
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для выполнения операции",
+        )
+
+    return user
+
+
 async def get_current_auth_user_for_refresh(
     refresh_token: str = Body(..., embed=True, alias="refresh_token"),
     session: AsyncSession = Depends(get_async_session),
