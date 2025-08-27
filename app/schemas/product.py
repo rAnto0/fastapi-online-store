@@ -1,6 +1,13 @@
+from enum import Enum
 from typing import Annotated
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
+
+class PriceSort(str, Enum):
+    asc = "asc"
+    desc = "desc"
 
 
 class ProductBase(BaseModel):
