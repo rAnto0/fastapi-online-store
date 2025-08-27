@@ -65,7 +65,8 @@ async def get_product_by_id(product_id: int, session: AsyncSession):
     product = result.scalars().first()
     if product is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Товар не найден"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Товар не найден",
         )
-    
+
     return product

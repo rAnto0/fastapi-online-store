@@ -9,6 +9,7 @@ from app.helpers.product import (
     build_product_query_with_filters,
     get_product_by_id,
 )
+from app.helpers.validation import validate_non_empty_body
 from app.models.product import Product
 from app.schemas.product import PriceSort, ProductCreate, ProductUpdate
 
@@ -116,12 +117,7 @@ async def update_product_service(
         Обновленный товар
     """
     try:
-        update_data = data.model_dump(exclude_unset=True)
-        if not update_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Пустое тело запроса",
-            )
+        update_data = validate_non_empty_body(data)
 
         product = await get_product_by_id(
             product_id=product_id,
