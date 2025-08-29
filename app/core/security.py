@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
+from fastapi import HTTPException, status
 import jwt
 
 from .config import settings
@@ -76,5 +77,11 @@ def get_password_hash(password: str) -> bytes:
     return bcrypt.hashpw(password.encode(), salt)
 
 
-def verify_password(plain_password: str, hashed_password: bytes) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), hashed_password)
+def verify_password(plain_password: str, hashed_password: bytes) -> None:
+    if bcrypt.checkpw(plain_password.encode(), hashed_password):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Неверный пароль",
+    )

@@ -9,7 +9,7 @@ from app.helpers.product import (
     build_product_query_with_filters,
     get_product_by_id,
 )
-from app.helpers.validation import validate_non_empty_body
+from app.validation.request import validate_non_empty_body
 from app.models.product import Product
 from app.schemas.product import PriceSort, ProductCreate, ProductUpdate
 

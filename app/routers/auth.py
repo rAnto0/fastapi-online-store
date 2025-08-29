@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,9 +8,14 @@ from app.core.security import (
     create_refresh_token,
     get_password_hash,
 )
-from app.services.auth import validate_auth_user, get_current_auth_user_for_refresh
+from app.services.auth import (
+    register_user_service,
+    authenticate_user_service,
+    get_current_refresh_user,
+)
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead, TokenInfo, RefreshRequest
+from app.schemas.user import UserCreate, UserRead, TokenInfo
+from app.validation.user import validate_user_unique
 
 
 router = APIRouter(
@@ -26,30 +30,7 @@ router = APIRouter(
     response_model=UserRead,
     summary="Регистрация пользователя",
 )
-async def register(
-    data: UserCreate, session: AsyncSession = Depends(get_async_session)
-):
-    # Проверяем, нет ли пользователя с таким email или username
-    result = await session.execute(
-        select(User).where(
-            (User.email == data.email) | (User.username == data.username)
-        )
-    )
-    existing_user = result.scalar_one_or_none()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пользователь с таким email или username уже существует",
-        )
-
-    hashed_password: bytes = get_password_hash(data.password)
-    new_user = User(
-        username=data.username, email=data.email, hashed_password=hashed_password
-    )
-    session.add(new_user)
-    await session.commit()
-    await session.refresh(new_user)
-
+async def register(new_user: UserRead = Depends(register_user_service)):
     return new_user
 
 
@@ -60,12 +41,15 @@ async def register(
     response_model=TokenInfo,
 )
 async def login(
-    user: UserRead = Depends(validate_auth_user),
+    user: UserRead = Depends(authenticate_user_service),
 ):
     access_token = create_access_token(user=user)
     refresh_token = create_refresh_token(user=user)
 
-    return TokenInfo(access_token=access_token, refresh_token=refresh_token)
+    return TokenInfo(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
 
 
 @router.post(
@@ -74,8 +58,11 @@ async def login(
     summary="Обновление access токена по resresh токену",
     response_model=TokenInfo,
 )
-async def refresh(user: UserRead = Depends(get_current_auth_user_for_refresh)):
+async def refresh(user: UserRead = Depends(get_current_refresh_user)):
     access_token = create_access_token(user=user)
     refresh_token = create_refresh_token(user=user)
 
-    return TokenInfo(access_token=access_token, refresh_token=refresh_token)
+    return TokenInfo(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )

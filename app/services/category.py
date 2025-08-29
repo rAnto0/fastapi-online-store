@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.helpers.category import get_category_by_id
-from app.helpers.validation import validate_non_empty_body
+from app.validation.request import validate_non_empty_body
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 

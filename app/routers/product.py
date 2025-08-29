@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_async_session
 from app.helpers.product import get_product_by_id
 from app.schemas.product import ProductRead
-from app.services.auth import get_current_admin_user
+from app.services.auth import validate_user_admin_service
 from app.services.product import (
     create_product_service,
     delete_product_service,
@@ -18,7 +18,7 @@ from app.services.product import (
 router = APIRouter(prefix="/products", tags=["Товары"])
 
 
-admin_deps = [Depends(get_current_admin_user)]
+admin_deps = [Depends(validate_user_admin_service)]
 
 
 @router.get(

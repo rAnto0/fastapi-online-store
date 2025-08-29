@@ -1,110 +1,101 @@
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Form, Body, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from fastapi import Form, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.user import UserRead, RefreshRequest
+from app.helpers.auth import get_current_token_payload, get_user_from_sub
+from app.helpers.user import get_user_by_username
+from app.schemas.user import UserCreate, UserRead
 from app.models.user import User
 from app.core.database import get_async_session
 from app.core.security import (
+    get_password_hash,
     verify_password,
-    decode_jwt,
-    TOKEN_TYPE_FIELD,
     ACCESS_TOKEN_TYPE,
     REFRESH_TOKEN_TYPE,
 )
+from app.validation.auth import validate_token_type
+from app.validation.user import validate_user_admin, validate_user_unique
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-
-async def validate_auth_user(
+async def authenticate_user_service(
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
     session: AsyncSession = Depends(get_async_session),
 ):
-    unauthed_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный логин или пароль"
+    user = await get_user_by_username(
+        username=username,
+        session=session,
     )
 
-    result = await session.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise unauthed_exc
-
-    if not verify_password(
-        plain_password=password, hashed_password=user.hashed_password
-    ):
-        raise unauthed_exc
+    verify_password(
+        plain_password=password,
+        hashed_password=user.hashed_password,
+    )
 
     return user
 
 
-async def get_current_auth_user(
-    token: str = Depends(oauth2_scheme),
+async def register_user_service(
+    data: UserCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Не удалось проверить учетные данные",
-        headers={"WWW-Authenticate": "Bearer"},
+    # Проверяем, нет ли пользователя с таким email и username
+    await validate_user_unique(
+        email=data.email,
+        username=data.username,
+        session=session,
     )
 
-    payload = decode_jwt(token)
+    hashed_password: bytes = get_password_hash(data.password)
+    new_user = User(
+        username=data.username, email=data.email, hashed_password=hashed_password
+    )
 
-    token_type: str = payload.get(TOKEN_TYPE_FIELD)
-    if token_type != ACCESS_TOKEN_TYPE:
-        raise credentials_exception
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
 
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-
-    # Получаем пользователя из БД
-    result = await session.execute(select(User).where(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise credentials_exception
-
-    return user
+    return new_user
 
 
-async def get_current_admin_user(user: UserRead = Depends(get_current_auth_user)):
-    if not user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав для выполнения операции",
+class UserGetterFromToken:
+    def __init__(self, token_type: str) -> None:
+        self.token_type = token_type
+
+    async def __call__(
+        self,
+        payload: dict[str, Any] = Depends(get_current_token_payload),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        """
+        Получает пользователя на основе токена.
+
+        Args:
+            payload: Полезная нагрузка JWT-токена
+            session: Асинхронная сессия БД
+
+        Returns:
+            User: Аутентифицированный пользователь
+        """
+        validate_token_type(
+            payload=payload,
+            token_type=self.token_type,
         )
 
-    return user
+        user = await get_user_from_sub(
+            payload=payload,
+            session=session,
+        )
+
+        return user
 
 
-async def get_current_auth_user_for_refresh(
-    refresh_token: str = Body(..., embed=True, alias="refresh_token"),
-    session: AsyncSession = Depends(get_async_session),
-) -> UserRead:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Не удалось проверить учетные данные",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+get_current_auth_user = UserGetterFromToken(ACCESS_TOKEN_TYPE)
+get_current_refresh_user = UserGetterFromToken(REFRESH_TOKEN_TYPE)
 
-    payload = decode_jwt(refresh_token)
 
-    token_type: str = payload.get(TOKEN_TYPE_FIELD)
-    if token_type != REFRESH_TOKEN_TYPE:
-        raise credentials_exception
-
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-
-    # Получаем пользователя из БД
-    result = await session.execute(select(User).where(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise credentials_exception
-
-    return UserRead.model_validate(user)
+async def validate_user_admin_service(
+    user: UserRead = Depends(get_current_auth_user),
+):
+    validate_user_admin(user=user)

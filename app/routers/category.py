@@ -8,7 +8,7 @@ from app.core.database import get_async_session
 from app.helpers.category import get_category_by_id
 from app.models.category import Category
 from app.schemas.category import CategoryRead
-from app.services.auth import get_current_admin_user
+from app.services.auth import validate_user_admin_service
 from app.services.category import (
     create_category_service,
     delete_category_service,
@@ -19,7 +19,7 @@ from app.services.category import (
 router = APIRouter(prefix="/category", tags=["Категории"])
 
 
-admin_deps = [Depends(get_current_admin_user)]
+admin_deps = [Depends(validate_user_admin_service)]
 
 
 @router.get(

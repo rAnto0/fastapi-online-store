@@ -26,9 +26,13 @@ async def db_test(session: AsyncSession = Depends(get_async_session)):
 
 @app.get("/me")
 async def auth_user_check_self_info(user: UserRead = Depends(get_current_auth_user)):
-    return {
+    user_info_dict = {
         "id": user.id,
         "username": user.username,
         "email": user.email,
         "дата создания": user.created_at,
     }
+    if user.is_admin:
+        user_info_dict.update({"admin": True})
+
+    return user_info_dict
