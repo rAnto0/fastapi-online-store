@@ -1,7 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String, Text, Float, DateTime, func, ForeignKey
+from sqlalchemy import (
+    CheckConstraint,
+    Integer,
+    String,
+    Text,
+    Float,
+    DateTime,
+    func,
+    ForeignKey,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 
 
@@ -16,8 +26,18 @@ class Product(Base):
     category_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("categories.id"), nullable=False
     )
+    stock_quantity: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     category = relationship("Category", back_populates="products")
+    cart_items = relationship("CartItem", back_populates="product")
+
+    __table_args__ = (
+        CheckConstraint(
+            "stock_quantity >= 0", name="check_stock_quantity_non_negative"
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<Product(id={self.id}, name='{self.title}', price={self.price})>"
