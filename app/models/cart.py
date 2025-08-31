@@ -9,7 +9,7 @@ class Cart(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
+        Integer, ForeignKey("users.id"), nullable=False, index=True
     )
 
     user = relationship("User", back_populates="carts")
@@ -26,7 +26,7 @@ class CartItem(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     cart_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("carts.id"), nullable=False
+        Integer, ForeignKey("carts.id"), nullable=False, index=True
     )
     product_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("products.id"), nullable=False, index=True

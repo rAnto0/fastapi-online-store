@@ -19,6 +19,9 @@ class ProductBase(BaseModel):
     ] = None
     price: Annotated[float, Field(..., gt=0, description="Цена товара")]
     category_id: Annotated[int, Field(..., ge=1, description="ID категории")]
+    stock_quantity: Annotated[
+        int, Field(..., ge=0, le=999, description="Количество товара на складе")
+    ]
 
     model_config = {"str_strip_whitespace": True}
 
@@ -51,5 +54,8 @@ class ProductUpdate(BaseModel):
     ] = None
     price: Annotated[float | None, Field(gt=0, description="Цена товара")] = None
     category_id: Annotated[int | None, Field(ge=1, description="ID категории")] = None
+    stock_quantity: Annotated[
+        int | None, Field(ge=0, le=999, description="Количество товара на складе")
+    ] = None
 
     model_config = {"str_strip_whitespace": True}
