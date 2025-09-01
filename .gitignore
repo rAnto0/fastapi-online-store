@@ -220,3 +220,5 @@ $RECYCLE.BIN/
 *.lnk
 
 certs/
+
+.VSCodeCounter/

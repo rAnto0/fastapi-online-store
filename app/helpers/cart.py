@@ -1,5 +1,6 @@
+from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cart import Cart, CartItem
@@ -9,8 +10,27 @@ from app.models.product import Product
 async def get_cart_by_user_id(
     user_id: int,
     session: AsyncSession,
+) -> Cart | None:
+    """Получить корзину по ID пользователя
+
+    Args:
+        user_id (int): ID пользователя
+        session (AsyncSession): Асинхронная сессия БД
+
+    Returns:
+        Cart | None: Корзина пользователя или None, если корзины нет
+    """
+    query = select(Cart).where(Cart.user_id == user_id)
+    result = await session.execute(query)
+
+    return result.scalars().first()
+
+
+async def get_or_create_cart_by_user_id(
+    user_id: int,
+    session: AsyncSession,
 ) -> Cart:
-    """Получить корзину по ID пользователя, если корзины нет тогда создать новую
+    """Получить или создать корзину по ID пользователя
 
     Args:
         user_id (int): ID пользователя
@@ -31,6 +51,29 @@ async def get_cart_by_user_id(
         await session.refresh(cart)
 
     return cart
+
+
+async def get_cart_item_by_cart_id(
+    cart_id: int,
+    session: AsyncSession,
+):
+    """Получить товары с корзины по ID корзины
+
+    Args:
+        cart_id (int): ID корзины
+        session (AsyncSession): Асинхронная сессия БД
+
+    Returns:
+        list[CartItem]: Товары с корзины
+    """
+    query = (
+        select(CartItem)
+        .options(selectinload(CartItem.product).selectinload(Product.category))
+        .where(CartItem.cart_id == cart_id)
+    )
+    result = await session.execute(query)
+
+    return result.scalars().all()
 
 
 async def get_cart_item_by_cart_id_and_product_id(
