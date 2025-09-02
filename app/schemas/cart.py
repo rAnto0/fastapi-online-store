@@ -1,4 +1,3 @@
-from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, Field, computed_field
@@ -9,8 +8,6 @@ from app.schemas.product import ProductRead
 class CartBase(BaseModel):
     product_id: Annotated[int, Field(..., ge=1, description="ID товара")]
     quantity: Annotated[int, Field(..., ge=1, le=999, description="Количество товара")]
-
-    model_config = {"str_strip_whitespace": True}
 
 
 class CartAddProduct(CartBase):
@@ -30,3 +27,7 @@ class CartItemRead(BaseModel):
         return round(self.quantity * self.product.price, 2)
 
     model_config = {"from_attributes": True}
+
+
+class CartItemQuantityUpdate(BaseModel):
+    quantity: Annotated[int, Field(ge=0, le=999, description="Количество товара")]

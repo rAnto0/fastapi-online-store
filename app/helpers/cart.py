@@ -26,6 +26,37 @@ async def get_cart_by_user_id(
     return result.scalars().first()
 
 
+async def get_cart_id_by_user_id_or_error_404(
+    user_id: int,
+    session: AsyncSession,
+    error_detail: str = "Корзина не найдена",
+) -> int:
+    """Получить ID корзины по ID пользователя
+
+    Args:
+        user_id (int): ID пользователя
+        session (AsyncSession): Асинхронная сессия БД
+        error_detail (str): Описание ошибки. Defaults to "Корзина не найдена"
+
+    Raises:
+        HTTPException: 404 - Если корзины нет
+
+    Returns:
+        int: ID корзины
+    """
+    cart = await get_cart_by_user_id(
+        user_id=user_id,
+        session=session,
+    )
+    if cart is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error_detail,
+        )
+
+    return cart.id
+
+
 async def get_or_create_cart_by_user_id(
     user_id: int,
     session: AsyncSession,
@@ -99,5 +130,39 @@ async def get_cart_item_by_cart_id_and_product_id(
     result = await session.execute(query)
 
     cart_item: CartItem | None = result.scalars().first()
+
+    return cart_item
+
+
+async def get_cart_item_by_cart_id_and_product_id_or_error_404(
+    cart_id: int,
+    product_id: int,
+    session: AsyncSession,
+    error_detail: str = "Такого товара в корзине нет",
+) -> CartItem:
+    """Получить товар с корзины по ID корзины и ID товара или ошибка 404
+
+    Args:
+        cart_id (int): ID корзины
+        product_id (int): ID товара
+        session (AsyncSession): Асинхронная сессия БД
+        error_detail (str, optional): Описание ошибки. Defaults to "Такого товара в корзине нет".
+
+    Raises:
+        HTTPException: 404 - Если товара нет в корзине
+
+    Returns:
+        CartItem: Товар с корзины
+    """
+    cart_item = await get_cart_item_by_cart_id_and_product_id(
+        cart_id=cart_id,
+        product_id=product_id,
+        session=session,
+    )
+    if cart_item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error_detail,
+        )
 
     return cart_item

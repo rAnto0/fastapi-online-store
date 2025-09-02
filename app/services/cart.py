@@ -1,4 +1,6 @@
-from fastapi import Depends, HTTPException, status
+from typing import Annotated
+from fastapi import Body, Depends, HTTPException, Path, status
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
@@ -96,4 +98,120 @@ async def add_product_cart_service(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Произошла ошибка при добавлении товара в корзину",
+        )
+
+
+async def update_product_quantity_from_cart_service(
+    product_id: Annotated[int, Path(ge=1)],
+    data: Annotated[cartSchemas.CartItemQuantityUpdate, Body()],
+    user: userSchemas.UserRead = Depends(get_current_auth_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        cart_id = await cartHelper.get_cart_id_by_user_id_or_error_404(
+            user_id=user.id,
+            session=session,
+        )
+
+        cart_item = (
+            await cartHelper.get_cart_item_by_cart_id_and_product_id_or_error_404(
+                cart_id=cart_id,
+                product_id=product_id,
+                session=session,
+            )
+        )
+
+        # Если quantity = 0, удаляем товар из корзины
+        if data.quantity == 0:
+            await session.delete(cart_item)
+            await session.commit()
+
+            return None
+
+        # Обновляем количество
+        productValidation.validate_product_in_stock(
+            product=cart_item.product,
+            quantity=data.quantity,
+        )
+        cart_item.quantity = data.quantity
+
+        await session.commit()
+        await session.refresh(cart_item)
+
+        # Загружаем обновленные данные с связями
+        updated_item = await cartHelper.get_cart_item_by_cart_id_and_product_id(
+            cart_id=cart_id,
+            product_id=product_id,
+            session=session,
+        )
+        return updated_item
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла ошибка при добавлении товара в корзину",
+        )
+
+
+async def delete_product_from_cart_service(
+    product_id: Annotated[int, Path(ge=1)],
+    user: userSchemas.UserRead = Depends(get_current_auth_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        cart_id = await cartHelper.get_cart_id_by_user_id_or_error_404(
+            user_id=user.id,
+            session=session,
+        )
+
+        cart_item = (
+            await cartHelper.get_cart_item_by_cart_id_and_product_id_or_error_404(
+                cart_id=cart_id,
+                product_id=product_id,
+                session=session,
+            )
+        )
+
+        await session.delete(cart_item)
+        await session.commit()
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        await session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла внутренняя ошибка сервера",
+        )
+
+
+async def delete_cart_service(
+    user: userSchemas.UserRead = Depends(get_current_auth_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        cart = await cartHelper.get_cart_by_user_id(
+            user_id=user.id,
+            session=session,
+        )
+        if cart is None:
+            # Если корзины нет, она уже "пустая"
+            return
+
+        # Удаляем все элементы корзины, корзину оставляем
+        await session.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
+        await session.commit()
+
+    except Exception as e:
+        await session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла внутренняя ошибка сервера",
         )

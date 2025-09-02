@@ -55,7 +55,10 @@ def build_product_query_with_filters(
     return query
 
 
-async def get_product_by_id(product_id: int, session: AsyncSession):
+async def get_product_by_id(
+    product_id: int,
+    session: AsyncSession,
+) -> Product:
     """
     Фукнция для получения товара по ID.
     """
