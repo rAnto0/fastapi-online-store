@@ -32,6 +32,7 @@ class Product(Base):
 
     category = relationship("Category", back_populates="products")
     cart_items = relationship("CartItem", back_populates="product")
+    order_items = relationship("OrderItem", back_populates="product")
 
     __table_args__ = (
         CheckConstraint(
