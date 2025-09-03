@@ -5,11 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_async_session
-from app.helpers.category import get_category_by_id
-from app.models.category import Category
-from app.schemas.category import CategoryRead
-from app.services.auth import validate_user_admin_service
-from app.services.category import (
+from app.auth.services import validate_user_admin_service
+from .helpers import get_category_by_id
+from .models import Category
+from .schemas import CategoryRead
+from .services import (
     create_category_service,
     delete_category_service,
     update_category_service,

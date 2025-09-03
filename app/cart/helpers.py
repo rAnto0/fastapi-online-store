@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.cart import Cart, CartItem
-from app.models.product import Product
+from app.products.models import Product
+from .models import Cart, CartItem
 
 
 async def get_cart_by_user_id(

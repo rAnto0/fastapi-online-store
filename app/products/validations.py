@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 
-from app.models.product import Product
+from .models import Product
 
 
 def validate_product_in_stock(

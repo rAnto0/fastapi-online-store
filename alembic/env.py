@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 import sys
 import importlib
-import pkgutil
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -18,12 +17,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Импортируем Base из database.py
 from app.core.database import Base
 
-# Автоимпорт моделей из app/models/
-import app.models
-
-for _, module_name, _ in pkgutil.iter_modules(app.models.__path__):
-    importlib.import_module(f"app.models.{module_name}")
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -37,6 +30,33 @@ if config.config_file_name is not None:
 db_url = os.getenv("DATABASE_SYNC_URL")
 if db_url:
     config.set_main_option("sqlalchemy.url", db_url)
+
+# Автоматически находим все приложения в папке app
+apps_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../app"))
+exclude_dirs = ["__pycache__", "certs", "validations", "core"]
+apps = []
+
+for item in os.listdir(apps_path):
+    if item in exclude_dirs or item.startswith("."):
+        continue
+    item_path = os.path.join(apps_path, item)
+    if (
+        os.path.isdir(item_path)
+        and not item.startswith("__")
+        and not item.startswith(".")
+    ):
+        # Проверяем, есть ли в папке models.py
+        if os.path.exists(os.path.join(item_path, "models.py")):
+            apps.append(item)
+            print(f"Found app with models: {item}")
+
+# Затем импортируем модели из найденных приложений
+for app_name in apps:
+    try:
+        importlib.import_module(f"app.{app_name}.models")
+        print(f"Successfully imported models from {app_name}")
+    except Exception as e:
+        print(f"Error importing models from {app_name}: {e}")
 
 # add your model's MetaData object here
 # for 'autogenerate' support

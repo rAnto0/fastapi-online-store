@@ -1,14 +1,26 @@
 from typing import Annotated
+
 from fastapi import Body, Depends, HTTPException, Path, status
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
-from app.helpers import cart as cartHelper, product as productHelper
-from app.models.cart import CartItem, Cart
-from app.schemas import cart as cartSchemas, user as userSchemas
-from app.validation import product as productValidation
-from app.services.auth import get_current_auth_user
+from app.users import schemas as userSchemas
+from app.products import (
+    helpers as productHelper,
+    validations as productValidation,
+)
+from app.auth.services import get_current_auth_user
+from .schemas import CartAddProduct, CartItemQuantityUpdate
+from .models import CartItem, Cart
+from .helpers import (
+    get_cart_by_user_id,
+    get_or_create_cart_by_user_id,
+    get_cart_id_by_user_id_or_error_404,
+    get_cart_item_by_cart_id,
+    get_cart_item_by_cart_id_and_product_id,
+    get_cart_item_by_cart_id_and_product_id_or_error_404,
+)
 
 
 async def get_cart_service(
@@ -16,7 +28,7 @@ async def get_cart_service(
     session: AsyncSession = Depends(get_async_session),
 ):
     # получаем корзину по ID пользователя
-    cart: Cart | None = await cartHelper.get_cart_by_user_id(
+    cart: Cart | None = await get_cart_by_user_id(
         user_id=user.id,
         session=session,
     )
@@ -26,7 +38,7 @@ async def get_cart_service(
         return []
 
     # получаем товары с корзины
-    cart_item = await cartHelper.get_cart_item_by_cart_id(
+    cart_item = await get_cart_item_by_cart_id(
         cart_id=cart.id,
         session=session,
     )
@@ -35,7 +47,7 @@ async def get_cart_service(
 
 
 async def add_product_cart_service(
-    data: cartSchemas.CartAddProduct,
+    data: CartAddProduct,
     user: userSchemas.UserRead = Depends(get_current_auth_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -47,12 +59,12 @@ async def add_product_cart_service(
         )
 
         # получаем корзину по ID пользователя
-        cart = await cartHelper.get_or_create_cart_by_user_id(
+        cart = await get_or_create_cart_by_user_id(
             user_id=user.id,
             session=session,
         )
         # Проверяем, есть ли товар уже в корзине
-        cart_item = await cartHelper.get_cart_item_by_cart_id_and_product_id(
+        cart_item = await get_cart_item_by_cart_id_and_product_id(
             cart_id=cart.id,
             product_id=product.id,
             session=session,
@@ -82,7 +94,7 @@ async def add_product_cart_service(
         await session.commit()
         await session.refresh(cart_item)
 
-        cart_item = await cartHelper.get_cart_item_by_cart_id_and_product_id(
+        cart_item = await get_cart_item_by_cart_id_and_product_id(
             cart_id=cart.id,
             product_id=product.id,
             session=session,
@@ -103,22 +115,20 @@ async def add_product_cart_service(
 
 async def update_product_quantity_from_cart_service(
     product_id: Annotated[int, Path(ge=1)],
-    data: Annotated[cartSchemas.CartItemQuantityUpdate, Body()],
+    data: Annotated[CartItemQuantityUpdate, Body()],
     user: userSchemas.UserRead = Depends(get_current_auth_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        cart_id = await cartHelper.get_cart_id_by_user_id_or_error_404(
+        cart_id = await get_cart_id_by_user_id_or_error_404(
             user_id=user.id,
             session=session,
         )
 
-        cart_item = (
-            await cartHelper.get_cart_item_by_cart_id_and_product_id_or_error_404(
-                cart_id=cart_id,
-                product_id=product_id,
-                session=session,
-            )
+        cart_item = await get_cart_item_by_cart_id_and_product_id_or_error_404(
+            cart_id=cart_id,
+            product_id=product_id,
+            session=session,
         )
 
         # Если quantity = 0, удаляем товар из корзины
@@ -139,7 +149,7 @@ async def update_product_quantity_from_cart_service(
         await session.refresh(cart_item)
 
         # Загружаем обновленные данные с связями
-        updated_item = await cartHelper.get_cart_item_by_cart_id_and_product_id(
+        updated_item = await get_cart_item_by_cart_id_and_product_id(
             cart_id=cart_id,
             product_id=product_id,
             session=session,
@@ -163,17 +173,15 @@ async def delete_product_from_cart_service(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        cart_id = await cartHelper.get_cart_id_by_user_id_or_error_404(
+        cart_id = await get_cart_id_by_user_id_or_error_404(
             user_id=user.id,
             session=session,
         )
 
-        cart_item = (
-            await cartHelper.get_cart_item_by_cart_id_and_product_id_or_error_404(
-                cart_id=cart_id,
-                product_id=product_id,
-                session=session,
-            )
+        cart_item = await get_cart_item_by_cart_id_and_product_id_or_error_404(
+            cart_id=cart_id,
+            product_id=product_id,
+            session=session,
         )
 
         await session.delete(cart_item)
@@ -196,7 +204,7 @@ async def delete_cart_service(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        cart = await cartHelper.get_cart_by_user_id(
+        cart = await get_cart_by_user_id(
             user_id=user.id,
             session=session,
         )

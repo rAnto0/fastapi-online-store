@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.product import Product
-from app.schemas.product import PriceSort
+from .models import Product
+from .schemas import PriceSort
 
 
 def build_product_base_query(with_category: bool = True, product_id: int | None = None):

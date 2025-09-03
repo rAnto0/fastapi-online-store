@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, Response, status, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
-from app.helpers.product import get_product_by_id
-from app.schemas.product import ProductRead
-from app.services.auth import validate_user_admin_service
-from app.services.product import (
+from app.auth.services import validate_user_admin_service
+from .helpers import get_product_by_id
+from .schemas import ProductRead
+from .services import (
     create_product_service,
     delete_product_service,
     get_products_with_filters_service,

@@ -3,8 +3,8 @@ from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
-from app.schemas.user import UserRead
+from .models import User
+from .schemas import UserRead
 
 
 async def validate_email_unique(

@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 import jwt
 
 from .config import settings
-from app.schemas.user import UserRead
+from app.users.schemas import UserRead
 
 
 TOKEN_TYPE_FIELD = "type"

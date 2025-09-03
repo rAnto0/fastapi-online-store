@@ -3,10 +3,10 @@ from fastapi import Depends, HTTPException, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
-from app.helpers.category import get_category_by_id
-from app.validation.request import validate_non_empty_body
-from app.models.category import Category
-from app.schemas.category import CategoryCreate, CategoryUpdate
+from app.validations.request import validate_non_empty_body
+from .helpers import get_category_by_id
+from .models import Category
+from .schemas import CategoryCreate, CategoryUpdate
 
 
 async def create_category_service(

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, computed_field
 
-from app.schemas.product import ProductRead
+from app.products.schemas import ProductRead
 
 
 class CartBase(BaseModel):

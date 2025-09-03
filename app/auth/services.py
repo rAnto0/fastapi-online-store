@@ -3,10 +3,10 @@ from typing import Annotated, Any
 from fastapi import Form, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.helpers.auth import get_current_token_payload, get_user_from_sub
-from app.helpers.user import get_user_by_username
-from app.schemas.user import UserCreate, UserRead
-from app.models.user import User
+from app.users.helpers import get_user_by_username
+from app.users.schemas import UserCreate, UserRead
+from app.users.models import User
+from app.users.validations import validate_user_admin, validate_user_unique
 from app.core.database import get_async_session
 from app.core.security import (
     get_password_hash,
@@ -14,8 +14,8 @@ from app.core.security import (
     ACCESS_TOKEN_TYPE,
     REFRESH_TOKEN_TYPE,
 )
-from app.validation.auth import validate_token_type
-from app.validation.user import validate_user_admin, validate_user_unique
+from .validations import validate_token_type
+from .helpers import get_current_token_payload, get_user_from_sub
 
 
 async def authenticate_user_service(

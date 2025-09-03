@@ -4,14 +4,14 @@ from fastapi import Depends, Path, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
-from app.helpers.category import get_category_by_id
-from app.helpers.product import (
+from app.categories.helpers import get_category_by_id
+from app.validations.request import validate_non_empty_body
+from .helpers import (
     build_product_query_with_filters,
     get_product_by_id,
 )
-from app.validation.request import validate_non_empty_body
-from app.models.product import Product
-from app.schemas.product import PriceSort, ProductCreate, ProductUpdate
+from .models import Product
+from .schemas import PriceSort, ProductCreate, ProductUpdate
 
 
 async def get_products_with_filters_service(

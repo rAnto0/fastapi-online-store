@@ -3,15 +3,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from .core.database import get_async_session
-from .routers import product, category, auth, cart
-from .schemas.user import UserRead
-from .services.auth import get_current_auth_user
+from .products import routers as products_router
+from .categories import routers as categories_router
+from .auth import routers as auth_router
+from .cart import routers as cart_router
+from .users.schemas import UserRead
+from .auth.services import get_current_auth_user
+
 
 app = FastAPI(title="Shop API")
-app.include_router(product.router)
-app.include_router(category.router)
-app.include_router(auth.router)
-app.include_router(cart.router)
+app.include_router(products_router.router)
+app.include_router(categories_router.router)
+app.include_router(auth_router.router)
+app.include_router(cart_router.router)
 
 
 @app.get("/")
