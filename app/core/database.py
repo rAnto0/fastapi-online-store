@@ -20,3 +20,8 @@ async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         yield session
+
+
+# Гарантируем, что все модели будут импортированы и промаппированы
+# до того, как кто-то запросит metadata или создаст миграции
+import app.models  # noqa: F401
