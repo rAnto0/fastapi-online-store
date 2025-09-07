@@ -7,6 +7,7 @@ from .products import routers as products_router
 from .categories import routers as categories_router
 from .auth import routers as auth_router
 from .cart import routers as cart_router
+from .orders import routers as order_router
 from .users.schemas import UserRead
 from .auth.services import get_current_auth_user
 
@@ -16,6 +17,7 @@ app.include_router(products_router.router)
 app.include_router(categories_router.router)
 app.include_router(auth_router.router)
 app.include_router(cart_router.router)
+app.include_router(order_router.router)
 
 
 @app.get("/")

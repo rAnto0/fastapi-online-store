@@ -14,12 +14,10 @@ class CartAddProduct(CartBase):
     pass
 
 
-class CartItemRead(BaseModel):
+class CartItemRead(CartBase):
     id: int
     cart_id: int
-    product_id: int
     product: ProductRead
-    quantity: int
 
     @computed_field
     def total_price(self) -> float:

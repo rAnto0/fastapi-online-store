@@ -23,12 +23,12 @@ def validate_product_in_stock(
             detail="Товар отсутствует на складе",
         )
 
-    if quantity and product.stock_quantity < quantity:
+    if quantity and ((product.stock_quantity - product.reserved) < quantity):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "message": "Запрашиваемое количество превышает доступное",
-                "available": product.stock_quantity,
+                "available": product.stock_quantity - product.reserved,
                 "requested": quantity,
             },
         )

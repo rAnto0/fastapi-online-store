@@ -29,6 +29,9 @@ class Product(Base):
     stock_quantity: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    reserved: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     category = relationship("Category", back_populates="products")
     cart_items = relationship("CartItem", back_populates="product")
@@ -38,6 +41,7 @@ class Product(Base):
         CheckConstraint(
             "stock_quantity >= 0", name="check_stock_quantity_non_negative"
         ),
+        CheckConstraint("reserved >= 0", name="check_reserved_non_negative"),
     )
 
     def __repr__(self) -> str:

@@ -202,6 +202,7 @@ async def delete_product_from_cart_service(
 async def delete_cart_service(
     user: userSchemas.UserRead = Depends(get_current_auth_user),
     session: AsyncSession = Depends(get_async_session),
+    session_commit: bool = True,
 ):
     try:
         cart = await get_cart_by_user_id(
@@ -214,7 +215,8 @@ async def delete_cart_service(
 
         # Удаляем все элементы корзины, корзину оставляем
         await session.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
-        await session.commit()
+        if session_commit:
+            await session.commit()
 
     except Exception as e:
         await session.rollback()

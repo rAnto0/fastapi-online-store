@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from .schemas import OrderStatus, PaymentMethods
+from .schemas import OrderStatus, PaymentMethods, PaymentStatus
 
 
 class Order(Base):
@@ -25,8 +25,11 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus), default=OrderStatus.PENDING, nullable=False, index=True
+    order_status: Mapped[OrderStatus] = mapped_column(
+        Enum(OrderStatus), default=OrderStatus.PENDING, nullable=False
+    )
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False
     )
     # price
     subtotal: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
@@ -54,7 +57,10 @@ class Order(Base):
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
     )
     delivery_address = relationship(
-        "DeliveryAddress", back_populates="order", cascade="all, delete-orphan"
+        "DeliveryAddress",
+        back_populates="order",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -65,7 +71,9 @@ class Order(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Order(id={self.id}, user_id={self.user_id}, status={self.status})>"
+        return (
+            f"<Order(id={self.id}, user_id={self.user_id}, status={self.order_status})>"
+        )
 
 
 class OrderItem(Base):
@@ -78,6 +86,8 @@ class OrderItem(Base):
     product_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("products.id"), nullable=False, index=True
     )
+    product_title: Mapped[str] = mapped_column(String(100), nullable=False)
+    product_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
 
     order = relationship("Order", back_populates="order_items")
@@ -86,6 +96,7 @@ class OrderItem(Base):
     __table_args__ = (
         UniqueConstraint("order_id", "product_id", name="uq_order_product"),
         CheckConstraint("quantity > 0", name="check_quantity_positive"),
+        CheckConstraint("product_price >= 0", name="check_product_price_non_negative"),
     )
 
     def __repr__(self) -> str:

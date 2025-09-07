@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
@@ -105,6 +107,38 @@ async def get_cart_item_by_cart_id(
     result = await session.execute(query)
 
     return result.scalars().all()
+
+
+async def get_cart_item_by_cart_id_or_error_404(
+    cart_id: int,
+    session: AsyncSession,
+) -> Sequence[CartItem]:
+    """Получить товары с корзины по ID корзины или ошибка 404
+
+    Args:
+        cart_id (int): ID корзины
+        session (AsyncSession): Асинхронная сессия БД
+
+    Raises:
+        HTTPException: 404 - Если корзина пустая
+
+    Returns:
+        Sequence[CartItem]: Товары с корзины
+    """
+    query = (
+        select(CartItem)
+        .options(selectinload(CartItem.product).selectinload(Product.category))
+        .where(CartItem.cart_id == cart_id)
+    )
+    result = await session.execute(query)
+    cart_item = result.scalars().all()
+    if not cart_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Корзина пустая",
+        )
+
+    return cart_item
 
 
 async def get_cart_item_by_cart_id_and_product_id(
