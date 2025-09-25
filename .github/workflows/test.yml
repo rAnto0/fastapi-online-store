@@ -1,0 +1,79 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+      DATABASE_SYNC_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/test_db
+      DATABASE_TEST_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+      SECRET_KEY: "test-secret-key-123"
+      ALGORITHM: "RS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 90
+      AUTH_JWT_KEYS_PRIVATE_KEY_PATH: "app/certs/jwt-private.pem"
+      AUTH_JWT_KEYS_PUBLIC_KEY_PATH: "app/certs/jwt-public.pem"
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Create SSL certificates directory
+        run: |
+          mkdir -p app/certs
+
+      - name: Generate test SSL certificates
+        run: |
+          openssl genrsa -out app/certs/jwt-private.pem 2048
+          openssl rsa -in app/certs/jwt-private.pem -pubout -out app/certs/jwt-public.pem
+          echo "Test certificates generated:"
+          ls -la app/certs/
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx coverage
+
+      - name: Run tests
+        run: |
+          pytest -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
