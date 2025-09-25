@@ -7,14 +7,30 @@ from app.products.models import Product
 
 
 @pytest.fixture
-async def category_factory(db_session):
+async def category_payload_factory():
+    """Возвращает фабрику payload'ов для категорий"""
+
+    def _factory(name=None, description="Test Description Cat"):
+        name = name or f"Test Cat {uuid.uuid4().hex[:6]}"
+        return {
+            "name": name,
+            "description": description,
+        }
+
+    return _factory
+
+
+@pytest.fixture
+async def category_factory(
+    db_session,
+    category_payload_factory,
+):
     """Возвращает фабрику категорий"""
 
     async def _factory(**kwargs):
-        name = kwargs.get("name") or f"Test Cat {uuid.uuid4().hex[:6]}"
-        description = kwargs.get("description") or "Test Description Cat"
+        payload = category_payload_factory(**kwargs)
 
-        category = Category(name=name, description=description)
+        category = Category(**payload)
         db_session.add(category)
         await db_session.commit()
         await db_session.refresh(category)
