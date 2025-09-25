@@ -10,9 +10,15 @@ from .helpers import *
 from app.main import app
 from app.core.database import get_async_session, Base
 from app.core.config import settings
-from app.core.security import get_password_hash
 from app.auth.services import validate_user_admin_service
 from app.users.models import User
+
+
+@pytest.fixture(scope="session")
+def faker():
+    import faker
+
+    return faker.Faker()
 
 
 @pytest.fixture(scope="session")
@@ -76,22 +82,15 @@ async def override_admin_dependency():
 
 
 @pytest.fixture
-async def non_admin_user(db_session):
-    """
-    Создаёт в тестовой БД обычного пользователя (не admin).
-    """
-    password = "TestUser010203"
-    user = User(
-        username="TestUser",
-        email="TestUser@example.test",
-        hashed_password=get_password_hash(password),
-        is_admin=False,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
+async def non_admin_user(user_factory):
+    """Создает обычного пользователя (не admin)"""
+    return await user_factory()
 
-    return user
+
+@pytest.fixture
+async def admin_user(admin_user_factory):
+    """Создает пользователя-администратора"""
+    return await admin_user_factory()
 
 
 @pytest.fixture
