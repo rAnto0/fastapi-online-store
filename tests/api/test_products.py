@@ -1,71 +1,9 @@
-import uuid
-
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import insert, select
+from sqlalchemy import select
 
-from app.categories.models import Category
+from tests.helpers import assert_product_in_db
 from app.products.models import Product
-
-
-@pytest.fixture
-def product_payload_factory():
-    """Возвращает фабрику payload'ов — можно задавать title/price/stock через аргументы."""
-
-    def _factory(
-        category_id, title=None, price=12.5, stock_quantity=10, description="desc"
-    ):
-        title = title or f"My product {uuid.uuid4().hex[:6]}"
-        return {
-            "title": title,
-            "description": description,
-            "price": price,
-            "category_id": category_id,
-            "stock_quantity": stock_quantity,
-        }
-
-    return _factory
-
-
-@pytest.fixture
-async def category(db_session):
-    """Создаёт уникальную категорию в БД и возвращает её."""
-    name = f"Test Cat {uuid.uuid4().hex[:6]}"
-    await db_session.execute(
-        insert(Category).values(name=name, description="Test Description Cat")
-    )
-    await db_session.commit()
-
-    result = await db_session.execute(select(Category).where(Category.name == name))
-    cat = result.scalars().first()
-    return cat
-
-
-@pytest.fixture
-async def product_factory(
-    db_session,
-    category,
-    product_payload_factory,
-):
-    async def _factory(**kwargs):
-        payload = product_payload_factory(category.id, **kwargs)
-
-        product = Product(**payload)
-        db_session.add(product)
-        await db_session.commit()
-        await db_session.refresh(product)
-        return product
-
-    return _factory
-
-
-async def assert_product_in_db(db_session, title, expected_price):
-    """Утверждение: продукт с title существует и цена совпадает."""
-    q = select(Product).where(Product.title == title)
-    r = await db_session.execute(q)
-    prod = r.scalars().first()
-    assert prod is not None
-    assert prod.price == pytest.approx(expected_price)
 
 
 @pytest.mark.asyncio
