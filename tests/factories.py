@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 
+from app.cart.models import Cart, CartItem
 from app.categories.models import Category
 from app.core.security import get_password_hash
 from app.products.models import Product
@@ -146,5 +147,70 @@ def user_login_data_factory():
     def _factory(**kwargs):
         base_data = {"username": "testuser", "password": "SecurePass123!"}
         return {**base_data, **kwargs}
+
+    return _factory
+
+
+@pytest.fixture
+async def cart_factory(db_session, user_factory):
+    """Фабрика для создания корзины"""
+
+    async def _factory(**kwargs):
+        user = kwargs.pop("user", None)
+        if user is None:
+            user = await user_factory()
+
+        cart = Cart(user_id=user.id, **kwargs)
+        db_session.add(cart)
+        await db_session.commit()
+        await db_session.refresh(cart)
+        return cart
+
+    return _factory
+
+
+@pytest.fixture
+async def cart_item_factory(db_session, cart_factory, product_factory):
+    """Фабрика для создания элемента корзины"""
+
+    async def _factory(**kwargs):
+        cart = kwargs.pop("cart", None)
+        product = kwargs.pop("product", None)
+
+        if cart is None:
+            cart = await cart_factory()
+        if product is None:
+            product = await product_factory()
+
+        cart_item = CartItem(
+            cart_id=cart.id,
+            product_id=product.id,
+            quantity=kwargs.pop("quantity", 1),
+            **kwargs,
+        )
+        db_session.add(cart_item)
+        await db_session.commit()
+        await db_session.refresh(cart_item)
+        return cart_item
+
+    return _factory
+
+
+@pytest.fixture
+def cart_add_item_factory(product_factory):
+    """Фабрика данных для добавления товара в корзину"""
+
+    async def _factory(product_id, quantity=1):
+        return {"product_id": product_id, "quantity": quantity}
+
+    return _factory
+
+
+@pytest.fixture
+def cart_update_quantity_factory():
+    """Фабрика данных для обновления количества товара"""
+
+    def _factory(quantity=1):
+        return {"quantity": quantity}
 
     return _factory

@@ -35,6 +35,17 @@ async def assert_user_in_db(db_session, username, email, password):
     assert user.is_admin is False
 
 
+async def assert_cart_item_in_db(db_session, product_id, expected_quantity):
+    """Проверка наличия элемента корзины в БД"""
+    from app.cart.models import CartItem
+
+    q = select(CartItem).where(CartItem.product_id == product_id)
+    r = await db_session.execute(q)
+    cart_item = r.scalars().first()
+    assert cart_item is not None
+    assert cart_item.quantity == expected_quantity
+
+
 @pytest.fixture
 async def category(category_factory):
     """Создаёт уникальную категорию в БД и возвращает её."""
