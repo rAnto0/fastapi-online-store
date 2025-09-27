@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -224,10 +224,29 @@ class OrderService:
         """
         subtotal: float = 0  # сумма всех товаров
         for item in cart_item:
-            validate_product_in_stock(
-                product=item.product,
-                quantity=item.quantity,
+            # атомарно зарезервировать количество в БД
+            stmt = (
+                update(Product)
+                .where(
+                    Product.id == item.product_id,
+                    (Product.stock_quantity - Product.reserved) >= item.quantity,
+                )
+                .values(reserved=Product.reserved + item.quantity)
+                .returning(Product.id)
             )
+
+            result = await self.session.execute(stmt)
+            product_id = result.scalar_one_or_none()
+            if product_id is None:
+                # резерв не прошёл — недостаточно доступного количества
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "message": "Товар отсутствует на складе",
+                        "product_id": item.product_id,
+                    },
+                )
+
             await self._create_order_item(
                 OrderItemCreate(
                     order_id=order.id,
@@ -238,7 +257,6 @@ class OrderService:
                 )
             )
             subtotal += item.quantity * item.product.price
-            item.product.reserved += item.quantity
 
         order.subtotal = subtotal
         order.total = float(order.total) + subtotal
