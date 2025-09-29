@@ -176,9 +176,10 @@ async def cart_item_factory(db_session, cart_factory, product_factory):
     async def _factory(**kwargs):
         cart = kwargs.pop("cart", None)
         product = kwargs.pop("product", None)
+        user = kwargs.pop("user", None)
 
         if cart is None:
-            cart = await cart_factory()
+            cart = await cart_factory(user=user)
         if product is None:
             product = await product_factory()
 
@@ -212,5 +213,26 @@ def cart_update_quantity_factory():
 
     def _factory(quantity=1):
         return {"quantity": quantity}
+
+    return _factory
+
+
+@pytest.fixture
+def order_create_data_factory():
+    """Фабрика данных для создания заказа"""
+
+    def _factory(**kwargs):
+        defaults = {
+            "payment_method": "cash",
+            "notes": "Test Notes",
+            "delivery_address": {
+                "city": "Test City",
+                "postcode": 1000,
+                "region": "Test Region",
+                "country": "Test Country",
+                "phone": "12345678912",
+            },
+        }
+        return {**defaults, **kwargs}
 
     return _factory
