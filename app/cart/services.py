@@ -202,7 +202,9 @@ async def delete_product_from_cart_service(
 async def delete_cart_service(
     user: userSchemas.UserRead = Depends(get_current_auth_user),
     session: AsyncSession = Depends(get_async_session),
-    session_commit: bool = True,
+    commit: bool = True,
+    flush: bool = False,
+    rollback: bool = True,
 ):
     try:
         cart = await get_cart_by_user_id(
@@ -215,11 +217,14 @@ async def delete_cart_service(
 
         # Удаляем все элементы корзины, корзину оставляем
         await session.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
-        if session_commit:
+        if commit:
             await session.commit()
+        if flush:
+            await session.flush()
 
     except Exception as e:
-        await session.rollback()
+        if rollback:
+            await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

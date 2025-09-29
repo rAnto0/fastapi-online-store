@@ -10,7 +10,6 @@ from app.cart.models import CartItem
 from app.cart.validations import validate_non_empty_cart
 from app.cart.services import delete_cart_service
 from app.products.models import Product
-from app.products.validations import validate_product_in_stock
 from app.users.schemas import UserRead
 from app.auth.services import get_current_auth_user
 from .schemas import (
@@ -54,51 +53,62 @@ class OrderService:
             Order: Заказ
         """
         try:
-            # проверяем что корзина не пустая
-            cart_item = await validate_non_empty_cart(
-                user_id=self.user.id, session=self.session
-            )
-            # создаем заказ, без товаров и общей цены
-            order = await self._create_order(data)
-            # рассчитываем общую цену и записываем в заказ(так же проверяем каждый товар на наличие и создаем snapshot товара)
-            await self._create_order_item_from_cart(order=order, cart_item=cart_item)
-            # создаем адресс доставки
-            await self._create_delivery_address(
-                order_id=order.id, data=data.delivery_address
-            )
-            # очищаем корзину(без коммита)
-            await delete_cart_service(
-                user=self.user, session=self.session, session_commit=False
+            tx_ctx = (
+                self.session.begin_nested()
+                if self.session.in_transaction()
+                else self.session.begin()
             )
 
-            if data.payment_method == PaymentMethods.CASH:
-                await self.session.commit()
-
-                return await self.get_order_auth_user_by_id(
-                    order_id=order.id,
-                    error_detail="Заказ не найден после создания",
+            async with tx_ctx:
+                # проверяем что корзина не пустая
+                cart_item = await validate_non_empty_cart(
+                    user_id=self.user.id, session=self.session
+                )
+                # создаем заказ, без товаров и общей цены
+                order = await self._create_order(data)
+                # рассчитываем общую цену и записываем в заказ(так же проверяем каждый товар на наличие и создаем snapshot товара)
+                await self._create_order_item_from_cart(
+                    order=order, cart_item=cart_item
+                )
+                # создаем адресс доставки
+                await self._create_delivery_address(
+                    order_id=order.id, data=data.delivery_address
+                )
+                # очищаем корзину(без коммита)
+                await delete_cart_service(
+                    user=self.user,
+                    session=self.session,
+                    commit=False,
+                    flush=True,
+                    rollback=False,
                 )
 
-            elif data.payment_method == PaymentMethods.CARD:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Оплата картой пока невозможна",
-                )
-                # Инициируем процесс оплаты через платежный шлюз
-                # payment_url = await self._initiate_payment(order)
+                if data.payment_method == PaymentMethods.CASH:
+                    pass
 
-                # Возвращаем URL для перенаправления на страницу оплаты
-                # return {"order_id": order.id, "payment_url": payment_url}
+                elif data.payment_method == PaymentMethods.CARD:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Оплата картой пока невозможна",
+                    )
+                    # Инициируем процесс оплаты через платежный шлюз
+                    # payment_url = await self._initiate_payment(order)
+
+                    # Возвращаем URL для перенаправления на страницу оплаты
+                    # return {"order_id": order.id, "payment_url": payment_url}
+
+            return await self.get_order_auth_user_by_id(
+                order_id=order.id,
+                error_detail="Заказ не найден после создания",
+            )
 
         except HTTPException:
-            await self.session.rollback()
             raise
 
         except Exception as e:
-            await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Произошла непредвиденная ошибка при создании заказа",
+                detail=f"Произошла непредвиденная ошибка при создании заказа: {e}",
             )
 
     async def get_orders_auth_user(
