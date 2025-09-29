@@ -1,7 +1,7 @@
 from fastapi import Depends
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -33,22 +33,41 @@ async def async_engine():
     await engine.dispose()
 
 
-# Для каждого теста - отдельное соединение и транзакция
 @pytest.fixture
 async def db_session(async_engine):
-    # открываем connection и стартуем транзакцию
+    # открываем connection и стартуем глобальную транзакцию
     async with async_engine.connect() as conn:
-        trans = await conn.begin()  # глобальная транзакция
+        trans = await conn.begin()  # outer transaction
+
         # фабрика сессий, привязанная к открытому connection
         async_session = async_sessionmaker(
             bind=conn, expire_on_commit=False, class_=AsyncSession
         )
 
         async with async_session() as session:
+            # стартуем nested transaction (SAVEPOINT) для теста
+            await session.begin_nested()
+
+            # слушатель для автоматического восстановления nested savepoint после отката
+            def _restart_savepoint(session_, transaction):
+                # если вложенная транзакция закончилась (rollback/commit),
+                # и сейчас мы не в nested транзакции — создаём новый savepoint
+                if not session_.in_nested_transaction():
+                    session_.begin_nested()
+
+            event.listen(
+                session.sync_session, "after_transaction_end", _restart_savepoint
+            )
+
             try:
                 yield session
             finally:
-                # откатим изменения, сделанные в тесте
+                # удаляем слушатель чтобы избежать побочных эффектов
+                event.remove(
+                    session.sync_session, "after_transaction_end", _restart_savepoint
+                )
+
+                # закрываем сессию и откатываем outer транзакцию
                 await session.close()
                 await trans.rollback()
 
