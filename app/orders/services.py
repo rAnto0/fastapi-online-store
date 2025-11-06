@@ -53,11 +53,8 @@ class OrderService:
             Order: Заказ
         """
         try:
-            tx_ctx = (
-                self.session.begin_nested()
-                if self.session.in_transaction()
-                else self.session.begin()
-            )
+            outer = self.session.in_transaction()
+            tx_ctx = self.session.begin_nested() if outer else self.session.begin()
 
             async with tx_ctx:
                 # проверяем что корзина не пустая
@@ -96,6 +93,10 @@ class OrderService:
 
                     # Возвращаем URL для перенаправления на страницу оплаты
                     # return {"order_id": order.id, "payment_url": payment_url}
+
+            # коммит внешней транзакции
+            if outer:
+                await self.session.commit()
 
             return await self.get_order_auth_user_by_id(
                 order_id=order.id,
