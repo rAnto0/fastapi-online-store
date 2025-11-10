@@ -234,6 +234,47 @@ class OrderService:
 
         return orders
 
+    async def get_orders_confirmed(
+        self,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> Sequence[Order]:
+        """Сервис - получить подтвержденные заказы (admin)
+
+        Args:
+            offset (int, optional): Количество пропускаемых записей. Defaults to 0.
+            limit (int, optional): Максимальное количество возвращаемых записей. Defaults to 100.
+
+        Raises:
+            HTTPException: 404 - Нет подтвержденных заказов
+        Returns:
+            Sequence[Order]: Список подтвержденных заказов
+        """
+        query = (
+            select(Order)
+            .options(
+                selectinload(Order.order_items)
+                .selectinload(OrderItem.product)
+                .selectinload(Product.category),
+                selectinload(Order.delivery_address),
+            )
+            .where(Order.order_status == OrderStatus.CONFIRMED)
+            .order_by(Order.created_at.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self.session.execute(query)
+        orders = result.scalars().all()
+
+        if not orders:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Заказов нет",
+            )
+
+        return orders
+
     async def confirm_order(
         self,
         order_id: int,
@@ -278,6 +319,56 @@ class OrderService:
 
         # Обновляем статус
         order.order_status = OrderStatus.CONFIRMED
+
+        await self.session.commit()
+        await self.session.refresh(order)
+
+        return order
+
+    async def start_processing(
+        self,
+        order_id: int,
+        error_detail: str = "Заказ не найден",
+    ) -> Order:
+        """Сервис - подтверждение сборки товара (admin)
+
+        Args:
+            order_id (int): ID заказа
+            error_detail (str, optional): Описание ошибки. Defaults to "Заказ не найден".
+
+        Raises:
+            HTTPException: 404 заказ не найден
+            HTTPException: 400 статус заказа не 'confirmed'
+
+        Returns:
+            Order: Заказ пользователя
+        """
+        query = (
+            select(Order)
+            .options(
+                selectinload(Order.order_items)
+                .selectinload(OrderItem.product)
+                .selectinload(Product.category),
+                selectinload(Order.delivery_address),
+            )
+            .where(Order.id == order_id)
+        )
+        result = await self.session.execute(query)
+        order = result.scalars().first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=error_detail
+            )
+
+        if order.order_status != OrderStatus.CONFIRMED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Невозможно подтвердить заказ со статусом {order.order_status}",
+            )
+
+        # Обновляем статус
+        order.order_status = OrderStatus.PROCESSING
 
         await self.session.commit()
         await self.session.refresh(order)
