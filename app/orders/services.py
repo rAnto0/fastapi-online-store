@@ -192,22 +192,23 @@ class OrderService:
 
         return order
 
-    async def get_orders_pending(
+    async def get_orders_by_status(
         self,
+        order_status: OrderStatus,
         offset: int = 0,
         limit: int = 100,
     ) -> Sequence[Order]:
-        """Сервис - получить все заказы ожидающие подтверждения (admin)
+        """Сервис - получить заказ по статусу (admin)
 
         Args:
             offset (int, optional): Количество пропускаемых записей. Defaults to 0.
             limit (int, optional): Максимальное количество возвращаемых записей. Defaults to 100.
 
         Raises:
-            HTTPException: 404 - Нет заказов ожидающие подтверждения
+            HTTPException: 404 - Нет заказов
 
         Returns:
-            Sequence[Order]: Список заказов ожидающие подтверждения
+            Sequence[Order]: Список заказов
         """
         query = (
             select(Order)
@@ -217,7 +218,7 @@ class OrderService:
                 .selectinload(Product.category),
                 selectinload(Order.delivery_address),
             )
-            .where(Order.order_status == OrderStatus.PENDING)
+            .where(Order.order_status == order_status)
             .order_by(Order.created_at.asc())
             .offset(offset)
             .limit(limit)
@@ -234,141 +235,94 @@ class OrderService:
 
         return orders
 
-    async def get_orders_confirmed(
-        self,
-        offset: int = 0,
-        limit: int = 100,
-    ) -> Sequence[Order]:
-        """Сервис - получить подтвержденные заказы (admin)
-
-        Args:
-            offset (int, optional): Количество пропускаемых записей. Defaults to 0.
-            limit (int, optional): Максимальное количество возвращаемых записей. Defaults to 100.
-
-        Raises:
-            HTTPException: 404 - Нет подтвержденных заказов
-        Returns:
-            Sequence[Order]: Список подтвержденных заказов
-        """
-        query = (
-            select(Order)
-            .options(
-                selectinload(Order.order_items)
-                .selectinload(OrderItem.product)
-                .selectinload(Product.category),
-                selectinload(Order.delivery_address),
-            )
-            .where(Order.order_status == OrderStatus.CONFIRMED)
-            .order_by(Order.created_at.asc())
-            .offset(offset)
-            .limit(limit)
-        )
-
-        result = await self.session.execute(query)
-        orders = result.scalars().all()
-
-        if not orders:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Заказов нет",
-            )
-
-        return orders
-
-    async def confirm_order(
+    async def update_order_status(
         self,
         order_id: int,
+        new_status: OrderStatus,
+        expected_current_status: OrderStatus,
         error_detail: str = "Заказ не найден",
     ) -> Order:
-        """Сервис - подтвердить заказ по id (admin)
+        """Сервис - обновить статус заказа с проверкой текущего статуса
 
         Args:
             order_id (int): ID заказа
+            new_status (OrderStatus): Новый статус заказа
+            expected_current_status (OrderStatus): Ожидаемый текущий статус для валидации
             error_detail (str, optional): Описание ошибки. Defaults to "Заказ не найден".
 
         Raises:
             HTTPException: 404 заказ не найден
-            HTTPException: 400 статус заказа не 'pending'
+            HTTPException: 400 неверный текущий статус
 
         Returns:
-            Order: Заказ пользователя
+            Order: Обновленный заказ
         """
-        query = (
-            select(Order)
-            .options(
-                selectinload(Order.order_items)
-                .selectinload(OrderItem.product)
-                .selectinload(Product.category),
-                selectinload(Order.delivery_address),
-            )
-            .where(Order.id == order_id)
-        )
-        result = await self.session.execute(query)
-        order = result.scalars().first()
+        order = await self._get_order_by_order_id(order_id)
 
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=error_detail
             )
 
-        if order.order_status != OrderStatus.PENDING:
+        if order.order_status != expected_current_status:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Невозможно подтвердить заказ со статусом {order.order_status}",
+                detail=(
+                    f"Невозможно изменить статус на {new_status}. "
+                    f"Текущий статус {order.order_status}, ожидался {expected_current_status}"
+                ),
             )
 
-        # Обновляем статус
-        order.order_status = OrderStatus.CONFIRMED
+        order.order_status = new_status
 
         await self.session.commit()
         await self.session.refresh(order)
 
         return order
 
-    async def start_processing(
+    async def delivered_order(
         self,
         order_id: int,
         error_detail: str = "Заказ не найден",
     ) -> Order:
-        """Сервис - подтверждение сборки товара (admin)
-
-        Args:
-            order_id (int): ID заказа
-            error_detail (str, optional): Описание ошибки. Defaults to "Заказ не найден".
-
-        Raises:
-            HTTPException: 404 заказ не найден
-            HTTPException: 400 статус заказа не 'confirmed'
-
-        Returns:
-            Order: Заказ пользователя
-        """
-        query = (
-            select(Order)
-            .options(
-                selectinload(Order.order_items)
-                .selectinload(OrderItem.product)
-                .selectinload(Product.category),
-                selectinload(Order.delivery_address),
-            )
-            .where(Order.id == order_id)
+        """Сервис - доставить заказ (courier)"""
+        order = await self.update_order_status(
+            order_id=order_id,
+            new_status=OrderStatus.DELIVERED,
+            expected_current_status=OrderStatus.SHIPPED,
+            error_detail=error_detail,
         )
-        result = await self.session.execute(query)
-        order = result.scalars().first()
+
+        # Обновляем статус оплаты если был pending (наличные)
+        if order.payment_status == PaymentStatus.PENDING:
+            order.payment_status = PaymentStatus.COMPLETED
+
+        await self.session.commit()
+        await self.session.refresh(order)
+
+        return order
+
+    async def cancel_order(
+        self,
+        order_id: int,
+        error_detail: str = "Заказ не найден",
+    ) -> Order:
+        """Сервис - отменить заказ"""
+        order = await self._get_order_by_order_id(order_id)
 
         if not order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=error_detail
-            )
+            raise HTTPException(status_code=404, detail=error_detail)
 
-        if order.order_status != OrderStatus.CONFIRMED:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Невозможно подтвердить заказ со статусом {order.order_status}",
-            )
+        # Разлогика отмены в зависимости от статуса оплаты
+        if order.payment_status == PaymentStatus.COMPLETED:
+            order.payment_status = PaymentStatus.REFUNDED
+        else:
+            order.payment_status = PaymentStatus.FAILED
 
-        # Обновляем статус
-        order.order_status = OrderStatus.PROCESSING
+        order.order_status = OrderStatus.CANCELLED
+
+        # TODO: Разрезервировать товары
+        # await self._release_reserved_products(order)
 
         await self.session.commit()
         await self.session.refresh(order)
@@ -484,6 +438,22 @@ class OrderService:
 
         await self.session.flush()
         await self.session.refresh(delivery_address)
+
+    async def _get_order_by_order_id(self, order_id: int) -> Order | None:
+        """Вспомогательная функция для загрузки заказа со связями"""
+        query = (
+            select(Order)
+            .options(
+                selectinload(Order.order_items)
+                .selectinload(OrderItem.product)
+                .selectinload(Product.category),
+                selectinload(Order.delivery_address),
+            )
+            .where(Order.id == order_id)
+        )
+        result = await self.session.execute(query)
+
+        return result.scalars().first()
 
 
 async def get_order_service(
