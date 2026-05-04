@@ -1,0 +1,49 @@
+[project]
+name = "fastapi-online-store"
+version = "0.1.0"
+description = "Backend of an online store on FastAPI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]",
+    "alembic",
+    "psycopg2-binary",
+    "asyncpg",
+    "bcrypt",
+    "pyjwt[crypto]",
+    "cryptography",
+    "pydantic[email]",
+    "pydantic-settings",
+    "python-multipart",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "pytest-asyncio", "httpx", "ruff", "faker"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=80"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+omit = ["*/__init__.py", "tests/*"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["E402"]
+"tests/conftest.py" = ["F403"]
+
+[tool.alembic]
+script_location = "alembic"
+prepend_sys_path = ["."]

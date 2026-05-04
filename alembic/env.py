@@ -1,11 +1,10 @@
-from logging.config import fileConfig
+import logging
 import os
-from dotenv import load_dotenv
 import sys
-import importlib
+from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -23,8 +22,10 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
+if config.config_file_name and os.path.exists(config.config_file_name):
     fileConfig(config.config_file_name)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 # Получаем URL из .env или переменных окружения
 db_url = os.getenv("DATABASE_SYNC_URL")
