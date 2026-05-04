@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  merge-conflict-check:
+      name: Merge Conflict Check
+      if: github.event_name == 'pull_request'
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout PR head
+          uses: actions/checkout@v4
+          with:
+            ref: ${{ github.event.pull_request.head.sha }}
+            fetch-depth: 0
+
+        - name: Verify merge with base branch
+          run: |
+            git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+            git merge --no-commit --no-ff "origin/${{ github.event.pull_request.base.ref }}"
+
+  tests:
+      name: Tests (make test)
+      runs-on: ubuntu-latest
+      timeout-minutes: 10
+
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Prepare env files and JWT keys
+          run: |
+            make env-init
+            make keys-init
+
+        - name: Start required services
+          run: |
+            make run-dev
+
+        - name: Wait for PostgreSQL
+          run: |
+            for i in {1..60}; do
+              if docker compose --env-file .env.dev -f docker-compose.yaml -f docker-compose.dev.yaml exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
+                echo "PostgreSQL is ready"
+                exit 0
+              fi
+              echo "Waiting for PostgreSQL..."
+              sleep 2
+            done
+            echo "PostgreSQL did not become ready in time"
+            exit 1
+
+        - name: Run lint
+          run: make lint
+
+        - name: Check format
+          run: make format-check
+
+        - name: Run tests
+          run: make test
+
+        - name: Show containers status on failure
+          if: failure()
+          run: docker compose --env-file .env.dev -f docker-compose.yaml -f docker-compose.dev.yaml ps
+
+        - name: Tear down
+          if: always()
+          run: make down-dev ARGS="-v"
+
