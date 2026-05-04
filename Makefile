@@ -38,8 +38,8 @@ env-init:
 keys-init:
 	./scripts/init-jwt-keys.sh
 
-seed-courses:
-	python3 scripts/seed_courses.py
+seed:
+	python3 scripts/seed.py
 
 migrate:
 	$(COMPOSE_DEV) exec -T app uv run alembic -c alembic.ini upgrade head
