@@ -26,8 +26,8 @@ jobs:
             git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
             git merge --no-commit --no-ff "origin/${{ github.event.pull_request.base.ref }}"
 
-  tests:
-      name: Tests (make test)
+  CI:
+      name: Lint, Format & Test
       runs-on: ubuntu-latest
       timeout-minutes: 10
 
