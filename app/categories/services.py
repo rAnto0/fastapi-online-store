@@ -1,9 +1,11 @@
 from typing import Annotated
+
 from fastapi import Depends, HTTPException, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.validations.request import validate_non_empty_body
+
 from .helpers import get_category_by_id
 from .models import Category
 from .schemas import CategoryCreate, CategoryUpdate
@@ -31,11 +33,11 @@ async def create_category_service(
 
         return category
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла ошибка при создании категории",
+            detail="Произошла ошибка при создании категории",
         )
 
 
@@ -73,12 +75,12 @@ async def update_category_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )
 
 
@@ -104,10 +106,10 @@ async def delete_category_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )

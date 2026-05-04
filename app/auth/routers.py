@@ -4,13 +4,13 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
 )
-from app.users.schemas import UserRead, TokenInfo
+from app.users.schemas import TokenInfo, UserRead
+
 from .services import (
-    register_user_service,
     authenticate_user_service,
     get_current_refresh_user,
+    register_user_service,
 )
-
 
 router = APIRouter(
     prefix="/auth",

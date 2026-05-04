@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import Depends, Path, Query, status, HTTPException
+from fastapi import Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
 from app.categories.helpers import get_category_by_id
+from app.core.database import get_async_session
 from app.validations.request import validate_non_empty_body
+
 from .helpers import (
     build_product_query_with_filters,
     get_product_by_id,
@@ -39,7 +40,7 @@ async def get_products_with_filters_service(
     """
     if category_id:
         # проверяем есть ли такая категория
-        category = await get_category_by_id(
+        await get_category_by_id(
             category_id=category_id,
             session=session,
         )
@@ -72,7 +73,7 @@ async def create_product_service(
     """
     try:
         # проверяем есть ли такая категория
-        category = await get_category_by_id(
+        await get_category_by_id(
             category_id=data.category_id,
             session=session,
         )
@@ -93,11 +94,11 @@ async def create_product_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла ошибка при создании товара",
+            detail="Произошла ошибка при создании товара",
         )
 
 
@@ -125,7 +126,7 @@ async def update_product_service(
         )
 
         if "category_id" in update_data:
-            category = await get_category_by_id(
+            await get_category_by_id(
                 category_id=update_data["category_id"],
                 session=session,
             )
@@ -141,12 +142,12 @@ async def update_product_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )
 
 
@@ -172,10 +173,10 @@ async def delete_product_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )

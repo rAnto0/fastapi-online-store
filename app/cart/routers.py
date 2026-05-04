@@ -9,7 +9,6 @@ from .services import (
     update_product_quantity_from_cart_service,
 )
 
-
 router = APIRouter(prefix="/cart", tags=["Корзина"])
 
 
@@ -49,9 +48,7 @@ async def add_product_cart(
     },
 )
 async def update_product_quantity_from_cart(
-    cart_product: CartItemRead | None = Depends(
-        update_product_quantity_from_cart_service
-    ),
+    cart_product: CartItemRead | None = Depends(update_product_quantity_from_cart_service),
 ):
     if cart_product is None:
         # Товар был удален из корзины - возвращаем 204 No Content

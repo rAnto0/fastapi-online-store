@@ -55,9 +55,7 @@ async def test_get_order_by_id_success(
     product = await product_factory(title="Test Product")
     await cart_item_factory(user=non_admin_user, product=product)
     order_create_data = order_create_data_factory()
-    create_resp = await auth_client_non_admin.post(
-        "/orders/create", json=order_create_data
-    )
+    create_resp = await auth_client_non_admin.post("/orders/create", json=order_create_data)
     order_id = create_resp.json()["id"]
 
     # Получаем заказ по ID
@@ -183,12 +181,8 @@ async def test_create_order_calculates_totals_correctly(
 
     # Добавляем в корзину разные количества
     cart = await cart_factory(user=non_admin_user)
-    await cart_item_factory(
-        cart=cart, user=non_admin_user, product=product1, quantity=4
-    )
-    await cart_item_factory(
-        cart=cart, user=non_admin_user, product=product2, quantity=2
-    )
+    await cart_item_factory(cart=cart, user=non_admin_user, product=product1, quantity=4)
+    await cart_item_factory(cart=cart, user=non_admin_user, product=product2, quantity=2)
 
     order_create_data = order_create_data_factory()
     resp = await auth_client_non_admin.post("/orders/create", json=order_create_data)
@@ -269,9 +263,7 @@ async def test_create_order_multiple_products(
 ):
     """Создание заказа с несколькими товарами"""
     # Создаем несколько товаров
-    products = [
-        await product_factory(title=f"Product {i}", price=i * 10.0) for i in range(1, 4)
-    ]
+    products = [await product_factory(title=f"Product {i}", price=i * 10.0) for i in range(1, 4)]
 
     # Добавляем все в корзину
     cart = await cart_factory(user=non_admin_user)

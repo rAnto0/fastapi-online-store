@@ -33,9 +33,7 @@ class PaymentMethods(str, Enum):
 
 class OrderBase(BaseModel):
     payment_method: PaymentMethods
-    notes: Annotated[
-        str | None, Field(min_length=4, max_length=50, description="Заметка к заказу")
-    ] = None
+    notes: Annotated[str | None, Field(min_length=4, max_length=50, description="Заметка к заказу")] = None
 
 
 class OrderItemBase(BaseModel):
@@ -43,13 +41,9 @@ class OrderItemBase(BaseModel):
     product_id: Annotated[int, Field(..., ge=1, description="ID товара")]
     product_title: Annotated[
         str,
-        Field(
-            ..., min_length=3, max_length=100, description="Название товара в момент"
-        ),
+        Field(..., min_length=3, max_length=100, description="Название товара в момент"),
     ]
-    product_price: Annotated[
-        float, Field(..., gt=0, description="Цена товара в момент заказа")
-    ]
+    product_price: Annotated[float, Field(..., gt=0, description="Цена товара в момент заказа")]
     quantity: Annotated[int, Field(..., ge=1, le=999, description="Количество товара")]
 
 
@@ -73,15 +67,9 @@ class OrderItemCreate(OrderItemBase):
 class DeliveryAddressBase(BaseModel):
     city: Annotated[str, Field(..., min_length=4, max_length=50, description="Город")]
     postcode: Annotated[int | None, Field(ge=1000, le=4000, description="Почта")] = None
-    region: Annotated[
-        str | None, Field(min_length=4, max_length=50, description="Регион")
-    ] = None
-    country: Annotated[
-        str, Field(..., min_length=4, max_length=50, description="Страна")
-    ]
-    phone: Annotated[
-        str | None, Field(min_length=11, max_length=12, description="Регион")
-    ] = None
+    region: Annotated[str | None, Field(min_length=4, max_length=50, description="Регион")] = None
+    country: Annotated[str, Field(..., min_length=4, max_length=50, description="Страна")]
+    phone: Annotated[str | None, Field(min_length=11, max_length=12, description="Регион")] = None
 
 
 class DeliveryAddressRead(DeliveryAddressBase):

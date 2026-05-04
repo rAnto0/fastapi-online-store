@@ -1,11 +1,12 @@
 from typing import Sequence
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import CartItem
 from .helpers import (
     get_cart_id_by_user_id_or_error_404,
     get_cart_item_by_cart_id_or_error_404,
 )
+from .models import CartItem
 
 
 async def validate_non_empty_cart(

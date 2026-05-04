@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import HTTPException, status
 import jwt
+from fastapi import HTTPException, status
 
-from .config import settings
 from app.users.schemas import UserRead
 
+from .config import settings
 
 TOKEN_TYPE_FIELD = "type"
 ACCESS_TOKEN_TYPE = "access"

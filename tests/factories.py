@@ -46,9 +46,7 @@ async def category_factory(
 def product_payload_factory():
     """Возвращает фабрику payload'ов для товаров — можно задавать title/price/stock через аргументы."""
 
-    def _factory(
-        category_id, title=None, price=12.5, stock_quantity=10, description="desc"
-    ):
+    def _factory(category_id, title=None, price=12.5, stock_quantity=10, description="desc"):
         title = title or f"My product {uuid.uuid4().hex[:6]}"
         return {
             "title": title,

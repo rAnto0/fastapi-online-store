@@ -21,5 +21,5 @@ apps = [
 for a in apps:
     try:
         import_module(f"app.{a}.models")
-    except Exception as exc:
+    except Exception:
         raise

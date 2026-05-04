@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status, Path
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
 from app.auth.services import validate_user_admin_service
+from app.core.database import get_async_session
+
 from .helpers import get_category_by_id
 from .models import Category
 from .schemas import CategoryRead
@@ -15,16 +16,13 @@ from .services import (
     update_category_service,
 )
 
-
 router = APIRouter(prefix="/category", tags=["Категории"])
 
 
 admin_deps = [Depends(validate_user_admin_service)]
 
 
-@router.get(
-    "/", response_model=list[CategoryRead], summary="Получить список всех категорий"
-)
+@router.get("/", response_model=list[CategoryRead], summary="Получить список всех категорий")
 async def get_categories(
     session: AsyncSession = Depends(get_async_session),
     offset: Annotated[int, Query(ge=0)] = 0,

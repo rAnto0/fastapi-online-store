@@ -2,8 +2,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from tests.helpers import assert_product_in_db
 from app.products.models import Product
+from tests.helpers import assert_product_in_db
 
 
 @pytest.mark.asyncio
@@ -11,8 +11,8 @@ async def test_get_product(
     async_client: AsyncClient,
     product_factory,
 ):
-    product1 = await product_factory(price=10.0)
-    product2 = await product_factory(price=20.0)
+    await product_factory(price=10.0)
+    await product_factory(price=20.0)
 
     resp = await async_client.get("/products/")
     assert resp.status_code == 200
@@ -29,8 +29,8 @@ async def test_get_products_sorted(
     async_client: AsyncClient,
     product_factory,
 ):
-    product2 = await product_factory(price=20.0)
-    product1 = await product_factory(price=10.0)
+    await product_factory(price=20.0)
+    await product_factory(price=10.0)
 
     resp = await async_client.get("/products/")
     assert resp.status_code == 200
@@ -70,7 +70,7 @@ async def test_get_product_by_id(
     async_client: AsyncClient,
     product_factory,
 ):
-    product1 = await product_factory(price=10.0)
+    await product_factory(price=10.0)
     product2 = await product_factory(price=20.0)
 
     resp = await async_client.get(f"/products/{product2.id}")
@@ -233,9 +233,7 @@ async def test_update_product_partial(
     db_session,
 ):
     """Частичное обновление товара (только одно поле)"""
-    product = await product_factory(
-        title="Original Title", price=10.0, description="Original Description"
-    )
+    product = await product_factory(title="Original Title", price=10.0, description="Original Description")
 
     # Обновляем только цену
     update_data = {"price": 25.0}
@@ -365,9 +363,7 @@ async def test_update_product_non_admin(
     product = await product_factory()
 
     update_data = {"title": "Updated Title"}
-    resp = await auth_client_non_admin.patch(
-        f"/products/{product.id}", json=update_data
-    )
+    resp = await auth_client_non_admin.patch(f"/products/{product.id}", json=update_data)
     assert resp.status_code == 403
     data = resp.json()
     assert data["detail"] == "Недостаточно прав для выполнения операции"

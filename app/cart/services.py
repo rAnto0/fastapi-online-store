@@ -4,23 +4,26 @@ from fastapi import Body, Depends, HTTPException, Path, status
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.services import get_current_auth_user
 from app.core.database import get_async_session
-from app.users import schemas as userSchemas
 from app.products import (
     helpers as productHelper,
+)
+from app.products import (
     validations as productValidation,
 )
-from app.auth.services import get_current_auth_user
-from .schemas import CartAddProduct, CartItemQuantityUpdate
-from .models import CartItem, Cart
+from app.users import schemas as userSchemas
+
 from .helpers import (
     get_cart_by_user_id,
-    get_or_create_cart_by_user_id,
     get_cart_id_by_user_id_or_error_404,
     get_cart_item_by_cart_id,
     get_cart_item_by_cart_id_and_product_id,
     get_cart_item_by_cart_id_and_product_id_or_error_404,
+    get_or_create_cart_by_user_id,
 )
+from .models import Cart, CartItem
+from .schemas import CartAddProduct, CartItemQuantityUpdate
 
 
 async def get_cart_service(
@@ -76,9 +79,7 @@ async def add_product_cart_service(
             total_quantity += cart_item.quantity
 
         # Проверяем доступность товара
-        productValidation.validate_product_in_stock(
-            product=product, quantity=total_quantity
-        )
+        productValidation.validate_product_in_stock(product=product, quantity=total_quantity)
 
         # Обновляем или добавляем товар в корзину
         if cart_item:
@@ -105,11 +106,11 @@ async def add_product_cart_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла ошибка при добавлении товара в корзину",
+            detail="Произошла ошибка при добавлении товара в корзину",
         )
 
 
@@ -159,11 +160,11 @@ async def update_product_quantity_from_cart_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла ошибка при добавлении товара в корзину",
+            detail="Произошла ошибка при добавлении товара в корзину",
         )
 
 
@@ -190,12 +191,12 @@ async def delete_product_from_cart_service(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )
 
 
@@ -222,11 +223,11 @@ async def delete_cart_service(
         if flush:
             await session.flush()
 
-    except Exception as e:
+    except Exception:
         if rollback:
             await session.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Произошла внутренняя ошибка сервера",
+            detail="Произошла внутренняя ошибка сервера",
         )

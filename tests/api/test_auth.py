@@ -38,7 +38,7 @@ async def test_register_user_duplicate_username(
     user_registration_data_factory,
 ):
     """Регистрация с существующим username"""
-    existing_user = await user_factory(username="existing_user")
+    await user_factory(username="existing_user")
 
     registration_data = user_registration_data_factory(username="existing_user")
 
@@ -53,7 +53,7 @@ async def test_register_user_duplicate_email(
     user_registration_data_factory,
 ):
     """Регистрация с существующим email"""
-    existing_user = await user_factory(email="existing@example.com")
+    await user_factory(email="existing@example.com")
 
     registration_data = user_registration_data_factory(email="existing@example.com")
 
@@ -91,7 +91,7 @@ async def test_login_user_success(
 ):
     """Успешный вход пользователя"""
     password = "SecurePass123!"
-    user = await user_factory(
+    await user_factory(
         username="testuser",
         email="test@example.com",
         hashed_password=get_password_hash(password),
@@ -117,11 +117,9 @@ async def test_login_user_wrong_password(
     user_login_data_factory,
 ):
     """Вход с неверным паролем"""
-    user = await user_factory(username="testuser")
+    await user_factory(username="testuser")
 
-    login_data = user_login_data_factory(
-        username="testuser", password="WrongPassword123!"
-    )
+    login_data = user_login_data_factory(username="testuser", password="WrongPassword123!")
 
     resp = await async_client.post("/auth/login", data=login_data)
     assert resp.status_code == 400
@@ -133,9 +131,7 @@ async def test_login_user_not_found(
     user_login_data_factory,
 ):
     """Вход несуществующего пользователя"""
-    login_data = user_login_data_factory(
-        username="nonexistent", password="SomePass123!"
-    )
+    login_data = user_login_data_factory(username="nonexistent", password="SomePass123!")
 
     resp = await async_client.post("/auth/login", data=login_data)
     assert resp.status_code == 401
@@ -174,20 +170,14 @@ async def test_refresh_token_success(
 ):
     """Успешное обновление токена"""
     password = "SecurePass123!"
-    user = await user_factory(
-        username="testuser", hashed_password=get_password_hash(password)
-    )
+    await user_factory(username="testuser", hashed_password=get_password_hash(password))
 
     login_data = user_login_data_factory(username="testuser", password=password)
     login_resp = await async_client.post("/auth/login", data=login_data)
-    refresh_token = (
-        f"{login_resp.json()['token_type']} {login_resp.json()['refresh_token']}"
-    )
+    refresh_token = f"{login_resp.json()['token_type']} {login_resp.json()['refresh_token']}"
     print(refresh_token)
 
-    resp = await async_client.post(
-        "/auth/refresh", headers={"Authorization": refresh_token}
-    )
+    resp = await async_client.post("/auth/refresh", headers={"Authorization": refresh_token})
     assert resp.status_code == 200
     data = resp.json()
 
@@ -201,9 +191,7 @@ async def test_refresh_token_invalid(
     async_client: AsyncClient,
 ):
     """Обновление токена с невалидным refresh token"""
-    resp = await async_client.post(
-        "/auth/refresh", headers={"Authorization": "Bearer invalid_token"}
-    )
+    resp = await async_client.post("/auth/refresh", headers={"Authorization": "Bearer invalid_token"})
     assert resp.status_code == 401
 
 
@@ -217,9 +205,7 @@ async def test_admin_endpoint_access(
     password = "AdminPass123!"
     admin_user.hashed_password = get_password_hash(password)
 
-    login_data = user_login_data_factory(
-        username=admin_user.username, password=password
-    )
+    login_data = user_login_data_factory(username=admin_user.username, password=password)
     login_resp = await async_client.post("/auth/login", data=login_data)
     tokens = login_resp.json()
 

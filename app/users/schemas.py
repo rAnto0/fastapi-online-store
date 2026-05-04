@@ -1,16 +1,12 @@
-from typing import Annotated
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    username: Annotated[
-        str, Field(..., min_length=3, max_length=50, description="Никнейм пользователя")
-    ]
-    email: Annotated[
-        EmailStr | None, Field(..., max_length=50, description="Email пользователя")
-    ] = None
+    username: Annotated[str, Field(..., min_length=3, max_length=50, description="Никнейм пользователя")]
+    email: Annotated[EmailStr | None, Field(..., max_length=50, description="Email пользователя")] = None
 
     model_config = {"str_strip_whitespace": True}
 
@@ -24,9 +20,7 @@ class UserRead(UserBase):
 
 
 class UserCreate(UserBase):
-    password: Annotated[
-        str, Field(..., min_length=3, max_length=50, description="Пароль пользователя")
-    ]
+    password: Annotated[str, Field(..., min_length=3, max_length=50, description="Пароль пользователя")]
 
 
 class RefreshRequest(BaseModel):

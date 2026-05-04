@@ -1,10 +1,11 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, Path, status
 
 from app.auth.services import validate_user_admin_service
+
 from .schemas import OrderCreate, OrderRead, OrderStatus
 from .services import OrderService, get_order_service
-
 
 router = APIRouter(prefix="/orders", tags=["Заказ"])
 

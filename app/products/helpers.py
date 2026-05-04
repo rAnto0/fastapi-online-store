@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from .models import Product
 from .schemas import PriceSort
@@ -69,7 +69,7 @@ async def get_product_by_id(
     if product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Товар не найден",
+            detail="Товар не найден",
         )
 
     return product

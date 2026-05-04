@@ -1,10 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status, Path
+from fastapi import APIRouter, Depends, Path, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
 from app.auth.services import validate_user_admin_service
+from app.core.database import get_async_session
+
 from .helpers import get_product_by_id
 from .schemas import ProductRead
 from .services import (
@@ -13,7 +14,6 @@ from .services import (
     get_products_with_filters_service,
     update_product_service,
 )
-
 
 router = APIRouter(prefix="/products", tags=["Товары"])
 

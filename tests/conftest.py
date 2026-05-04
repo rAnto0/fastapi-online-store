@@ -1,17 +1,18 @@
-from fastapi import Depends
 import pytest
+from fastapi import Depends
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select, event
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import event, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
+from app.auth.services import validate_user_admin_service
+from app.core.config import settings
+from app.core.database import Base, get_async_session
+from app.main import app
+from app.users.models import User
 
 from .factories import *
 from .helpers import *
-from app.main import app
-from app.core.database import get_async_session, Base
-from app.core.config import settings
-from app.auth.services import validate_user_admin_service
-from app.users.models import User
 
 
 @pytest.fixture(scope="session")
@@ -23,9 +24,7 @@ def faker():
 
 @pytest.fixture(scope="session")
 async def async_engine():
-    engine = create_async_engine(
-        settings.DATABASE_TEST_URL, echo=False, poolclass=NullPool
-    )
+    engine = create_async_engine(settings.DATABASE_TEST_URL, echo=False, poolclass=NullPool)
     # создаём схему один раз
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -40,9 +39,7 @@ async def db_session(async_engine):
         trans = await conn.begin()  # outer transaction
 
         # фабрика сессий, привязанная к открытому connection
-        async_session = async_sessionmaker(
-            bind=conn, expire_on_commit=False, class_=AsyncSession
-        )
+        async_session = async_sessionmaker(bind=conn, expire_on_commit=False, class_=AsyncSession)
 
         async with async_session() as session:
             # стартуем nested transaction (SAVEPOINT) для теста
@@ -55,17 +52,13 @@ async def db_session(async_engine):
                 if not session_.in_nested_transaction():
                     session_.begin_nested()
 
-            event.listen(
-                session.sync_session, "after_transaction_end", _restart_savepoint
-            )
+            event.listen(session.sync_session, "after_transaction_end", _restart_savepoint)
 
             try:
                 yield session
             finally:
                 # удаляем слушатель чтобы избежать побочных эффектов
-                event.remove(
-                    session.sync_session, "after_transaction_end", _restart_savepoint
-                )
+                event.remove(session.sync_session, "after_transaction_end", _restart_savepoint)
 
                 # закрываем сессию и откатываем outer транзакцию
                 await session.close()
@@ -83,9 +76,7 @@ async def override_get_db(db_session):
 @pytest.fixture
 async def async_client(override_get_db):
     app.dependency_overrides[get_async_session] = override_get_db
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
 

@@ -2,10 +2,11 @@ from typing import Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.products.models import Product
+
 from .models import Cart, CartItem
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -8,14 +8,10 @@ class Cart(Base):
     __tablename__ = "carts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     user = relationship("User", back_populates="carts")
-    cart_items = relationship(
-        "CartItem", back_populates="cart", cascade="all, delete-orphan"
-    )
+    cart_items = relationship("CartItem", back_populates="cart", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Cart(id={self.id}, user_id={self.user_id})>"
@@ -25,12 +21,8 @@ class CartItem(Base):
     __tablename__ = "cart_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    cart_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("carts.id"), nullable=False, index=True
-    )
-    product_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("products.id"), nullable=False, index=True
-    )
+    cart_id: Mapped[int] = mapped_column(Integer, ForeignKey("carts.id"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False, index=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     cart = relationship("Cart", back_populates="cart_items")
@@ -42,4 +34,7 @@ class CartItem(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<CartItem(id={self.id}, cart_id={self.cart_id}, product_id={self.product_id}, quantity={self.quantity})>"
+        return (
+            f"<CartItem(id={self.id}, cart_id={self.cart_id}, "
+            f"product_id={self.product_id}, quantity={self.quantity})>"
+        )

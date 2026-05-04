@@ -1,21 +1,22 @@
 from typing import Annotated, Any
 
-from fastapi import Form, Depends
+from fastapi import Depends, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.users.helpers import get_user_by_username
-from app.users.schemas import UserCreate, UserRead
-from app.users.models import User
-from app.users.validations import validate_user_admin, validate_user_unique
 from app.core.database import get_async_session
 from app.core.security import (
-    get_password_hash,
-    verify_password,
     ACCESS_TOKEN_TYPE,
     REFRESH_TOKEN_TYPE,
+    get_password_hash,
+    verify_password,
 )
-from .validations import validate_token_type
+from app.users.helpers import get_user_by_username
+from app.users.models import User
+from app.users.schemas import UserCreate, UserRead
+from app.users.validations import validate_user_admin, validate_user_unique
+
 from .helpers import get_current_token_payload, get_user_from_sub
+from .validations import validate_token_type
 
 
 async def authenticate_user_service(
@@ -48,9 +49,7 @@ async def register_user_service(
     )
 
     hashed_password: bytes = get_password_hash(data.password)
-    new_user = User(
-        username=data.username, email=data.email, hashed_password=hashed_password
-    )
+    new_user = User(username=data.username, email=data.email, hashed_password=hashed_password)
 
     session.add(new_user)
     await session.commit()

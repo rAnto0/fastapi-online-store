@@ -43,7 +43,7 @@ async def test_get_category_by_id(
     async_client: AsyncClient,
     category_factory,
 ):
-    cat1 = await category_factory()
+    await category_factory()
     cat2 = await category_factory()
 
     resp = await async_client.get(f"/category/{cat2.id}")
@@ -150,9 +150,7 @@ async def test_update_category_partial(
     db_session,
 ):
     """Частичное обновление категории (только одно поле)"""
-    category = await category_factory(
-        name="Original Name", description="Original Description"
-    )
+    category = await category_factory(name="Original Name", description="Original Description")
 
     # Обновляем только цену
     update_data = {"description": "Updated Description"}
@@ -213,9 +211,7 @@ async def test_update_category_non_admin(
     category = await category_factory()
 
     update_data = {"name": "Updated Name"}
-    resp = await auth_client_non_admin.patch(
-        f"/category/{category.id}", json=update_data
-    )
+    resp = await auth_client_non_admin.patch(f"/category/{category.id}", json=update_data)
     assert resp.status_code == 403
 
 
@@ -235,9 +231,7 @@ async def test_update_category_database_consistency(
     assert resp.status_code == 200
 
     # Проверяем, что данные действительно сохранились в БД
-    result = await db_session.execute(
-        select(Category).where(Category.id == category.id)
-    )
+    result = await db_session.execute(select(Category).where(Category.id == category.id))
     updated_category = result.scalars().first()
 
     assert updated_category.name == "Updated in DB"

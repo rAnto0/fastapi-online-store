@@ -2,16 +2,18 @@ from typing import Sequence
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.core.database import get_async_session
+from app.auth.services import get_current_auth_user
 from app.cart.models import CartItem
-from app.cart.validations import validate_non_empty_cart
 from app.cart.services import delete_cart_service
+from app.cart.validations import validate_non_empty_cart
+from app.core.database import get_async_session
 from app.products.models import Product
 from app.users.schemas import UserRead
-from app.auth.services import get_current_auth_user
+
+from .models import DeliveryAddress, Order, OrderItem
 from .schemas import (
     DeliveryAddressAdd,
     OrderCreate,
@@ -20,7 +22,6 @@ from .schemas import (
     PaymentMethods,
     PaymentStatus,
 )
-from .models import DeliveryAddress, Order, OrderItem
 
 
 class OrderService:
@@ -58,19 +59,14 @@ class OrderService:
 
             async with tx_ctx:
                 # проверяем что корзина не пустая
-                cart_item = await validate_non_empty_cart(
-                    user_id=self.user.id, session=self.session
-                )
+                cart_item = await validate_non_empty_cart(user_id=self.user.id, session=self.session)
                 # создаем заказ, без товаров и общей цены
                 order = await self._create_order(data)
-                # рассчитываем общую цену и записываем в заказ(так же проверяем каждый товар на наличие и создаем snapshot товара)
-                await self._create_order_item_from_cart(
-                    order=order, cart_item=cart_item
-                )
+                # рассчитываем общую цену и записываем в заказ
+                # (так же проверяем каждый товар на наличие и создаем snapshot товара)
+                await self._create_order_item_from_cart(order=order, cart_item=cart_item)
                 # создаем адресс доставки
-                await self._create_delivery_address(
-                    order_id=order.id, data=data.delivery_address
-                )
+                await self._create_delivery_address(order_id=order.id, data=data.delivery_address)
                 # очищаем корзину(без коммита)
                 await delete_cart_service(
                     user=self.user,
@@ -260,9 +256,7 @@ class OrderService:
         order = await self._get_order_by_order_id(order_id)
 
         if not order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=error_detail
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_detail)
 
         if order.order_status != expected_current_status:
             raise HTTPException(
@@ -431,9 +425,7 @@ class OrderService:
             order_id (int): ID заказа
             data (DeliveryAddressAdd): Адресс доставки
         """
-        delivery_address = DeliveryAddress(
-            order_id=order_id, **data.model_dump(exclude_unset=True)
-        )
+        delivery_address = DeliveryAddress(order_id=order_id, **data.model_dump(exclude_unset=True))
         self.session.add(delivery_address)
 
         await self.session.flush()

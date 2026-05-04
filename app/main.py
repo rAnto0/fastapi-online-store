@@ -1,16 +1,15 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, FastAPI
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .core.database import get_async_session
-from .products import routers as products_router
-from .categories import routers as categories_router
 from .auth import routers as auth_router
-from .cart import routers as cart_router
-from .orders import routers as order_router
-from .users.schemas import UserRead
 from .auth.services import get_current_auth_user
-
+from .cart import routers as cart_router
+from .categories import routers as categories_router
+from .core.database import get_async_session
+from .orders import routers as order_router
+from .products import routers as products_router
+from .users.schemas import UserRead
 
 app = FastAPI(title="Shop API")
 app.include_router(products_router.router)

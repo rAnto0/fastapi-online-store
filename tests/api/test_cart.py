@@ -13,9 +13,7 @@ async def test_get_empty_cart(auth_client_non_admin):
 
 
 @pytest.mark.asyncio
-async def test_get_cart_with_items(
-    auth_client_non_admin, product_factory, cart_add_item_factory
-):
+async def test_get_cart_with_items(auth_client_non_admin, product_factory, cart_add_item_factory):
     """Получение корзины с товарами"""
     product1 = await product_factory(title="Product 1", price=10.0, stock_quantity=10)
     product2 = await product_factory(title="Product 2", price=20.0, stock_quantity=5)
@@ -56,19 +54,13 @@ async def test_add_product_to_cart_success(
     assert data["product"]["id"] == product.id
     assert data["product"]["title"] == "Test Product"
 
-    await assert_cart_item_in_db(
-        db_session=db_session, product_id=product.id, expected_quantity=3
-    )
+    await assert_cart_item_in_db(db_session=db_session, product_id=product.id, expected_quantity=3)
 
 
 @pytest.mark.asyncio
-async def test_add_product_insufficient_stock(
-    auth_client_non_admin, product_factory, cart_add_item_factory
-):
+async def test_add_product_insufficient_stock(auth_client_non_admin, product_factory, cart_add_item_factory):
     """Попытка добавить больше товара, чем есть в наличии"""
-    product = await product_factory(
-        title="Limited Product", price=15.0, stock_quantity=2
-    )
+    product = await product_factory(title="Limited Product", price=15.0, stock_quantity=2)
 
     add_data = await cart_add_item_factory(product.id, quantity=5)
 
@@ -110,9 +102,7 @@ async def test_update_product_quantity_success(
     await auth_client_non_admin.post("/cart/add", json=add_data)
 
     update_data = cart_update_quantity_factory(quantity=5)
-    resp = await auth_client_non_admin.patch(
-        f"/cart/item/{product.id}", json=update_data
-    )
+    resp = await auth_client_non_admin.patch(f"/cart/item/{product.id}", json=update_data)
     assert resp.status_code == 200
     data = resp.json()
     assert data["quantity"] == 5
@@ -132,9 +122,7 @@ async def test_update_product_quantity_to_zero_removes_item(
     await auth_client_non_admin.post("/cart/add", json=add_data)
 
     update_data = cart_update_quantity_factory(quantity=0)
-    resp = await auth_client_non_admin.patch(
-        f"/cart/item/{product.id}", json=update_data
-    )
+    resp = await auth_client_non_admin.patch(f"/cart/item/{product.id}", json=update_data)
     assert resp.status_code == 204
 
     resp = await auth_client_non_admin.get("/cart/")
@@ -144,9 +132,7 @@ async def test_update_product_quantity_to_zero_removes_item(
 
 
 @pytest.mark.asyncio
-async def test_update_nonexistent_product(
-    auth_client_non_admin, cart_update_quantity_factory
-):
+async def test_update_nonexistent_product(auth_client_non_admin, cart_update_quantity_factory):
     """Попытка обновить несуществующий товар в корзине"""
     update_data = cart_update_quantity_factory(quantity=5)
     resp = await auth_client_non_admin.patch("/cart/item/999", json=update_data)
@@ -154,19 +140,13 @@ async def test_update_nonexistent_product(
 
 
 @pytest.mark.asyncio
-async def test_delete_product_from_cart(
-    auth_client_non_admin, product_factory, cart_add_item_factory
-):
+async def test_delete_product_from_cart(auth_client_non_admin, product_factory, cart_add_item_factory):
     """Удаление конкретного товара из корзины"""
     product1 = await product_factory(title="Product 1", stock_quantity=10)
     product2 = await product_factory(title="Product 2", stock_quantity=5)
 
-    await auth_client_non_admin.post(
-        "/cart/add", json=await cart_add_item_factory(product1.id)
-    )
-    await auth_client_non_admin.post(
-        "/cart/add", json=await cart_add_item_factory(product2.id)
-    )
+    await auth_client_non_admin.post("/cart/add", json=await cart_add_item_factory(product1.id))
+    await auth_client_non_admin.post("/cart/add", json=await cart_add_item_factory(product2.id))
 
     resp = await auth_client_non_admin.get("/cart/")
     assert len(resp.json()) == 2
@@ -188,19 +168,13 @@ async def test_delete_nonexistent_product_from_cart(auth_client_non_admin):
 
 
 @pytest.mark.asyncio
-async def test_clear_cart(
-    auth_client_non_admin, product_factory, cart_add_item_factory
-):
+async def test_clear_cart(auth_client_non_admin, product_factory, cart_add_item_factory):
     """Полная очистка корзины"""
     product1 = await product_factory(title="Product 1", stock_quantity=10)
     product2 = await product_factory(title="Product 2", stock_quantity=5)
 
-    await auth_client_non_admin.post(
-        "/cart/add", json=await cart_add_item_factory(product1.id)
-    )
-    await auth_client_non_admin.post(
-        "/cart/add", json=await cart_add_item_factory(product2.id)
-    )
+    await auth_client_non_admin.post("/cart/add", json=await cart_add_item_factory(product1.id))
+    await auth_client_non_admin.post("/cart/add", json=await cart_add_item_factory(product2.id))
 
     resp = await auth_client_non_admin.get("/cart/")
     assert len(resp.json()) == 2
@@ -236,9 +210,7 @@ async def test_cart_unauthorized_access(async_client):
         if method == "GET":
             resp = await async_client.get(endpoint)
         elif method == "POST":
-            resp = await async_client.post(
-                endpoint, json={"product_id": 1, "quantity": 1}
-            )
+            resp = await async_client.post(endpoint, json={"product_id": 1, "quantity": 1})
         elif method == "PATCH":
             resp = await async_client.patch(endpoint, json={"quantity": 1})
         else:
@@ -264,9 +236,7 @@ async def test_cart_item_stock_validation(
 
     # Пытаемся увеличить количество сверх доступного
     update_data = cart_update_quantity_factory(quantity=5)
-    resp = await auth_client_non_admin.patch(
-        f"/cart/item/{product.id}", json=update_data
-    )
+    resp = await auth_client_non_admin.patch(f"/cart/item/{product.id}", json=update_data)
     assert resp.status_code == 400
 
 
